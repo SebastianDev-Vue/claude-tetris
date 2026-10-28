@@ -105,6 +105,15 @@ jobs:
                ### Información faltante
                (preguntas para quien reportó, o "Ninguna" si el issue es claro)
 
+               Formato: el contenido de `diagnostico.md` se publica tal cual como comentario de GitHub,
+               así que debe ser GitHub Flavored Markdown válido que GitHub renderice correctamente:
+               - Deja una línea en blanco antes y después de cada encabezado, lista, tabla o bloque de código.
+               - Usa `-` para listas y `1.` para pasos numerados; sublistas indentadas con 2 espacios.
+               - Nombres de archivos, funciones, variables y valores entre backticks (`game.js:14`, `drawBlock()`).
+               - Fragmentos de código en bloques con lenguaje (```js ... ```), nunca indentados con 4 espacios.
+               - NO envuelvas el archivo completo en un bloque de código, no uses HTML crudo ni front matter,
+                 y no agregues texto antes del encabezado `## 🔍 Diagnóstico automático`.
+
             Sé concreto y basa todo en el código real; si algo es una suposición, dilo explícitamente.
 
       - name: Aplicar labels y publicar diagnóstico
