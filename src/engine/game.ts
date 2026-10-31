@@ -394,12 +394,12 @@ export class Game {
     return this.makePiece(this.randomInt(1, STANDARD_COUNT))
   }
 
-  collide(shape: Shape, ox: number, oy: number): boolean {
+  collide(shape: Shape, ox: number, oy: number, board: Board = this.board): boolean {
     let hit = false
     forEachCell(shape, (r, c) => {
       const nx = ox + c
       const ny = oy + r
-      if (nx < 0 || nx >= COLS || ny >= ROWS || (ny >= 0 && this.cell(ny, nx))) hit = true
+      if (nx < 0 || nx >= COLS || ny >= ROWS || (ny >= 0 && board[ny]?.[nx])) hit = true
     })
     return hit
   }
@@ -750,7 +750,7 @@ export class Game {
     const s = this.snapshot
     if (!s) return false
     const piece = this.makePiece(s.pieceType)
-    if (this.collideOn(s.board, piece)) return false
+    if (this.collide(piece.shape, piece.x, piece.y, s.board)) return false
     this.board = s.board
     this.score = s.score
     this.lines = s.lines
@@ -810,14 +810,6 @@ export class Game {
     this.current = piece
     this.dropAccum = 0
     this.lastMoveRotate = false
-  }
-
-  private collideOn(board: Board, piece: Piece): boolean {
-    let hit = false
-    forEachCell(piece.shape, (r, c) => {
-      if (board[piece.y + r]?.[piece.x + c]) hit = true
-    })
-    return hit
   }
 
   // ---- Power-ups ----
