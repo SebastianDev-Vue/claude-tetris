@@ -13,6 +13,12 @@ const COLORS = [
   '#e57373', // Z - red
   '#90caf9', // J - azul pálido
   '#ffb74d', // L - orange
+  '#ff7043', // 8  power-up: Bomba
+  '#fff176', // 9  power-up: Rayo
+  '#f06292', // 10 power-up: Tinte
+  '#7986cb', // 11 power-up: Gravedad
+  '#b3e5fc', // 12 power-up: Congelar
+  '#e0e0e0', // 13 comodín (creado por Tinte)
 ];
 
 const PIECES = [
@@ -24,9 +30,27 @@ const PIECES = [
   [[5,5,0],[0,5,5],[0,0,0]],                  // Z
   [[6,0,0],[6,6,6],[0,0,0]],                  // J
   [[0,0,7],[7,7,7],[0,0,0]],                  // L
+  [[8]],                                       // Bomba
+  [[9]],                                       // Rayo
+  [[10]],                                      // Tinte
+  [[11]],                                      // Gravedad
+  [[12]],                                      // Congelar
+  null,                                        // 13 comodín: solo existe en el tablero
 ];
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
+
+// Power-ups: piezas 1×1 que se consumen al fijarse y aplican un efecto
+const POWER_FIRST = 8, POWER_LAST = 12;
+const WILDCARD = 13;
+const POWER_NAMES = { 8: 'BOMBA', 9: 'RAYO', 10: 'TINTE', 11: 'GRAVEDAD', 12: 'CONGELAR' };
+const CELL_ICONS = { 8: '💣', 9: '⚡', 10: '🎨', 11: '⬇', 12: '❄', 13: '★' };
+const LINES_PER_POWERUP = 8;
+const FREEZE_MS = 5000;
+const WILDCARD_SCORE = 50;
+const POPUP_MS = 1200;
+
+const isPowerUp = v => v >= POWER_FIRST && v <= POWER_LAST;
 
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
@@ -40,19 +64,33 @@ const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeBtn = document.getElementById('theme-toggle');
+const powerupInfoEl = document.getElementById('powerup-info');
 
 let gridColor = '#22222e';
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let linesToPowerUp, pendingPowerUp, frozenMs, popups;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
 }
 
-function randomPiece() {
-  const type = Math.floor(Math.random() * 7) + 1;
+function makePiece(type) {
   const shape = PIECES[type].map(row => [...row]);
   return { type, shape, x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2), y: 0 };
+}
+
+function randomPiece() {
+  return makePiece(Math.floor(Math.random() * 7) + 1);
+}
+
+// Único punto que decide qué pieza entra en la cola
+function pickNextPiece() {
+  if (pendingPowerUp) {
+    pendingPowerUp = false;
+    return makePiece(POWER_FIRST + Math.floor(Math.random() * (POWER_LAST - POWER_FIRST + 1)));
+  }
+  return randomPiece();
 }
 
 function collide(shape, ox, oy) {
@@ -109,10 +147,92 @@ function clearLines() {
   if (cleared) {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
+    // Los comodines que queden se eliminan con cualquier limpieza de líneas
+    const wild = removeWildcards();
+    if (wild) {
+      score += wild * WILDCARD_SCORE * level;
+      addPopup(`COMODINES +${wild}`, COLORS[WILDCARD]);
+    }
     level = Math.floor(lines / 10) + 1;
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+    linesToPowerUp -= cleared;
+    if (linesToPowerUp <= 0) {
+      linesToPowerUp += LINES_PER_POWERUP;
+      pendingPowerUp = true;
+    }
     updateHUD();
   }
+}
+
+function removeWildcards() {
+  let count = 0;
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      if (board[r][c] === WILDCARD) { board[r][c] = 0; count++; }
+  return count;
+}
+
+// ---- Power-ups ----
+
+// Se llama tras merge(): consume los bloques especiales de la pieza recién fijada
+function resolvePowerUp() {
+  for (let r = 0; r < current.shape.length; r++) {
+    for (let c = 0; c < current.shape[r].length; c++) {
+      const v = current.shape[r][c];
+      if (!isPowerUp(v)) continue;
+      const x = current.x + c, y = current.y + r;
+      board[y][x] = 0;
+      applyPowerUp(v, x, y);
+      addPopup(POWER_NAMES[v], COLORS[v]);
+    }
+  }
+}
+
+function applyPowerUp(type, x, y) {
+  switch (type) {
+    case 8: // Bomba: vacía el área 3×3 centrada en el bloque
+      for (let r = y - 1; r <= y + 1; r++)
+        for (let c = x - 1; c <= x + 1; c++)
+          if (r >= 0 && r < ROWS && c >= 0 && c < COLS) board[r][c] = 0;
+      break;
+    case 9: // Rayo: vacía su fila y su columna
+      board[y].fill(0);
+      for (let r = 0; r < ROWS; r++) board[r][x] = 0;
+      break;
+    case 10: { // Tinte: un color entero pasa a comodín
+      const color = tintTargetColor(x, y);
+      if (!color) break;
+      for (let r = 0; r < ROWS; r++)
+        for (let c = 0; c < COLS; c++)
+          if (board[r][c] === color) board[r][c] = WILDCARD;
+      break;
+    }
+    case 11: // Gravedad: cada columna cae hasta compactar los huecos
+      for (let c = 0; c < COLS; c++) {
+        const filled = [];
+        for (let r = 0; r < ROWS; r++) if (board[r][c]) filled.push(board[r][c]);
+        for (let r = ROWS - 1; r >= 0; r--) board[r][c] = filled.length ? filled.pop() : 0;
+      }
+      break;
+    case 12: // Congelar: sin caída automática durante FREEZE_MS
+      frozenMs = FREEZE_MS;
+      break;
+  }
+}
+
+// Color del bloque sobre el que cae el Tinte; si no hay, el más abundante del tablero
+function tintTargetColor(x, y) {
+  const below = y + 1 < ROWS ? board[y + 1][x] : 0;
+  if (below && below !== WILDCARD) return below;
+  const counts = {};
+  let best = 0, bestCount = 0;
+  for (const row of board)
+    for (const v of row) {
+      if (!v || v === WILDCARD) continue;
+      counts[v] = (counts[v] || 0) + 1;
+      if (counts[v] > bestCount) { best = v; bestCount = counts[v]; }
+    }
+  return best;
 }
 
 function ghostY() {
@@ -138,15 +258,17 @@ function softDrop() {
   }
 }
 
+// Orden fijo: fijar → efectos de power-up → limpiar líneas → nueva pieza
 function lockPiece() {
   merge();
+  resolvePowerUp();
   clearLines();
   spawn();
 }
 
 function spawn() {
   current = next;
-  next = randomPiece();
+  next = pickNextPiece();
   if (collide(current.shape, current.x, current.y)) {
     endGame();
   }
@@ -157,6 +279,41 @@ function updateHUD() {
   scoreEl.textContent = score.toLocaleString();
   linesEl.textContent = lines;
   levelEl.textContent = level;
+  updatePowerUpInfo();
+}
+
+function updatePowerUpInfo() {
+  let text;
+  if (frozenMs > 0) text = `❄ ${Math.ceil(frozenMs / 1000)}s`;
+  else if (pendingPowerUp || isPowerUp(next.type)) text = '¡listo!';
+  else text = `en ${linesToPowerUp} ${linesToPowerUp === 1 ? 'línea' : 'líneas'}`;
+  if (powerupInfoEl.textContent !== text) powerupInfoEl.textContent = text;
+}
+
+// ---- Popups de texto flotante sobre el tablero ----
+
+function addPopup(text, color) {
+  popups.push({ text, color, born: performance.now() });
+}
+
+function drawPopups() {
+  const now = performance.now();
+  popups = popups.filter(p => now - p.born < POPUP_MS);
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 22px system-ui, sans-serif';
+  popups.forEach((p, i) => {
+    const t = (now - p.born) / POPUP_MS;
+    ctx.globalAlpha = 1 - t;
+    ctx.fillStyle = p.color;
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+    ctx.lineWidth = 3;
+    const y = canvas.height / 2 - 40 * t + i * 28;
+    ctx.strokeText(p.text, canvas.width / 2, y);
+    ctx.fillText(p.text, canvas.width / 2, y);
+  });
+  ctx.restore();
 }
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
@@ -168,6 +325,15 @@ function drawBlock(context, x, y, colorIndex, size, alpha) {
   // highlight
   context.fillStyle = 'rgba(255,255,255,0.12)';
   context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+  // icono de power-up / comodín
+  const icon = CELL_ICONS[colorIndex];
+  if (icon) {
+    context.fillStyle = colorIndex === WILDCARD ? '#f9a825' : '#1a1a25';
+    context.font = `${Math.floor(size * 0.6)}px system-ui, sans-serif`;
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText(icon, x * size + size / 2, y * size + size / 2 + 1);
+  }
   context.globalAlpha = 1;
 }
 
@@ -208,6 +374,8 @@ function draw() {
   for (let r = 0; r < current.shape.length; r++)
     for (let c = 0; c < current.shape[r].length; c++)
       drawBlock(ctx, current.x + c, current.y + r, current.shape[r][c], BLOCK);
+
+  drawPopups();
 }
 
 function drawNext() {
@@ -248,7 +416,13 @@ function loop(ts) {
   if (gameOver || paused) return;
   const dt = ts - lastTime;
   lastTime = ts;
-  dropAccum += dt;
+  if (frozenMs > 0) {
+    // Congelar: la caída automática no avanza (el jugador sí puede moverse)
+    frozenMs = Math.max(0, frozenMs - dt);
+    updatePowerUpInfo();
+  } else {
+    dropAccum += dt;
+  }
   if (dropAccum >= dropInterval) {
     dropAccum = 0;
     if (!collide(current.shape, current.x, current.y + 1)) {
@@ -273,8 +447,12 @@ function init() {
   gameOver = false;
   dropInterval = 1000;
   dropAccum = 0;
+  linesToPowerUp = LINES_PER_POWERUP;
+  pendingPowerUp = false;
+  frozenMs = 0;
+  popups = [];
   lastTime = performance.now();
-  next = randomPiece();
+  next = pickNextPiece();
   spawn();
   updateHUD();
   overlay.classList.add('hidden');

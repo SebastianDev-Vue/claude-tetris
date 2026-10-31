@@ -42,6 +42,19 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Sistema de puntuación** clásico de Tetris (100 / 300 / 500 / 800 multiplicado por nivel).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
+- **Power-ups**: cada 8 líneas aparece una pieza especial de 1 bloque (ver abajo).
+
+### Power-ups
+
+| Pieza | Efecto al fijarse |
+| ----- | ----------------- |
+| 💣 Bomba | Destruye el área 3×3 alrededor del bloque |
+| ⚡ Rayo | Limpia la fila y la columna completas del bloque |
+| 🎨 Tinte | Convierte en comodines (★) todos los bloques del color sobre el que cae (o del más abundante). Los comodines desaparecen con la siguiente limpieza de líneas y dan 50 puntos × nivel cada uno |
+| ⬇ Gravedad | Compacta el tablero: cada columna cae hasta rellenar los huecos |
+| ❄ Congelar | Detiene la caída automática durante 5 segundos |
+
+El panel lateral muestra cuántas líneas faltan para el siguiente power-up y el tiempo restante de Congelar.
 
 ---
 
@@ -173,8 +186,10 @@ Algunos parámetros fáciles de tunear en `game.js`:
 | `COLS`         | Columnas del tablero                     | `10`                  |
 | `ROWS`         | Filas del tablero                        | `20`                  |
 | `BLOCK`        | Tamaño en píxeles de cada celda          | `30`                  |
-| `COLORS`       | Paleta de colores por tipo de pieza      | 7 colores             |
+| `COLORS`       | Paleta de colores por tipo de pieza      | 7 piezas + power-ups  |
 | `LINE_SCORES`  | Puntos por 1, 2, 3 o 4 líneas eliminadas | `[0,100,300,500,800]` |
+| `LINES_PER_POWERUP` | Líneas necesarias para el siguiente power-up | `8`         |
+| `FREEZE_MS`    | Duración de Congelar en ms               | `5000`                |
 | `dropInterval` | Velocidad inicial de caída en ms         | `1000`                |
 
 > Si cambias `COLS`, `ROWS` o `BLOCK`, recuerda ajustar también `width` y `height` del `<canvas id="board">` en `index.html` para que coincida (`COLS × BLOCK` × `ROWS × BLOCK`).
