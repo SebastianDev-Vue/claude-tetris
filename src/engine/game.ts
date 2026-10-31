@@ -4,6 +4,10 @@ import {
   COLS,
   FREEZE,
   FREEZE_MS,
+  HOLLOW,
+  HOLLOW_CHANCE,
+  PENTOMINOES,
+  PENTOMINO_CHANCE,
   GRAVITY,
   INITIAL_DROP_INTERVAL,
   LIGHTNING,
@@ -14,11 +18,15 @@ import {
   POWER_LAST,
   POWER_NAMES,
   ROWS,
+  SINGLE,
+  SPECIAL_NAMES,
   STANDARD_COUNT,
   TINT,
   WILDCARD,
   WILDCARD_SCORE,
   isPowerUp,
+  specialKind,
+  type SpecialKind,
 } from './constants'
 
 export type Board = number[][]
@@ -31,8 +39,16 @@ export interface Piece {
   y: number
 }
 
+export interface Cell {
+  x: number
+  y: number
+}
+
 /** Eventos visuales que el motor emite; la capa de render decide cómo mostrarlos. */
-export type GameEvent = { type: 'popup'; text: string; color: string }
+export type GameEvent =
+  | { type: 'popup'; text: string; color: string }
+  /** Ha entrado en juego una pieza especial; `cells` son sus celdas en el tablero. */
+  | { type: 'special'; kind: SpecialKind; cells: Cell[]; color: string }
 
 export interface GameOptions {
   /** Generador aleatorio en [0, 1); inyectable para tests deterministas. */
@@ -85,6 +101,8 @@ export class Game {
   dropAccum = 0
   linesToPowerUp = LINES_PER_POWERUP
   pendingPowerUp = false
+  /** Tras un Tetris la siguiente pieza es un single de recompensa. */
+  pendingReward = false
   /** Tiempo restante de Congelar; solo baja dentro de update(), así que la pausa lo conserva. */
   frozenMs = 0
 
@@ -109,6 +127,7 @@ export class Game {
     this.dropAccum = 0
     this.linesToPowerUp = LINES_PER_POWERUP
     this.pendingPowerUp = false
+    this.pendingReward = false
     this.frozenMs = 0
     this.next = this.pickNextPiece()
     this.spawn()
@@ -141,11 +160,25 @@ export class Game {
     return min + Math.floor(this.random() * (max - min + 1))
   }
 
-  /** Único punto que decide qué pieza entra en la cola. */
+  /**
+   * Único punto que decide qué pieza entra en la cola. Prioridad: recompensa tras Tetris →
+   * power-up pendiente → pieza hueca (reto) → pentominó → estándar. Lo pendiente que no
+   * entra ahora se conserva para la siguiente pieza.
+   */
   private pickNextPiece(): Piece {
+    if (this.pendingReward) {
+      this.pendingReward = false
+      return this.makePiece(SINGLE)
+    }
     if (this.pendingPowerUp) {
       this.pendingPowerUp = false
       return this.makePiece(this.randomInt(POWER_FIRST, POWER_LAST))
+    }
+    const roll = this.random()
+    if (roll < HOLLOW_CHANCE) return this.makePiece(HOLLOW)
+    if (roll < HOLLOW_CHANCE + PENTOMINO_CHANCE) {
+      const type = PENTOMINOES[this.randomInt(0, PENTOMINOES.length - 1)] ?? PENTOMINOES[0]
+      return this.makePiece(type)
     }
     return this.makePiece(this.randomInt(1, STANDARD_COUNT))
   }
@@ -257,7 +290,21 @@ export class Game {
     this.next = this.pickNextPiece()
     if (this.collide(this.current.shape, this.current.x, this.current.y)) {
       this.gameOver = true
+      return
     }
+    this.announceSpecial()
+  }
+
+  /** Avisa (popup + evento para animación) cuando entra en juego una pieza especial. */
+  private announceSpecial(): void {
+    const { type, shape, x, y } = this.current
+    const kind = specialKind(type)
+    if (!kind) return
+    const color = COLORS[type] ?? '#fff'
+    const cells: Cell[] = []
+    forEachCell(shape, (r, c) => cells.push({ x: x + c, y: y + r }))
+    this.emit({ type: 'popup', text: SPECIAL_NAMES[kind], color })
+    this.emit({ type: 'special', kind, cells, color })
   }
 
   private clearLines(): void {
@@ -268,6 +315,7 @@ export class Game {
 
     this.lines += cleared
     this.score += (LINE_SCORES[cleared] ?? 0) * this.level
+    if (cleared >= 4) this.pendingReward = true
     // Los comodines que queden se eliminan con cualquier limpieza de líneas
     const wild = this.removeWildcards()
     if (wild) {

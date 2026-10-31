@@ -8,11 +8,20 @@ import {
   FREEZE,
   FREEZE_MS,
   GRAVITY,
+  HOLLOW,
+  HOLLOW_CHANCE,
   LIGHTNING,
   LINES_PER_POWERUP,
+  PENTOMINOES,
+  PENTOMINO_CHANCE,
+  PIECES,
+  PLUS,
   ROWS,
+  SINGLE,
+  STANDARD_COUNT,
   TINT,
   WILDCARD,
+  Y_PIECE,
   isPowerUp,
 } from '@/engine/constants'
 
@@ -262,5 +271,107 @@ describe('power-ups', () => {
     const random = vi.fn<() => number>(() => 0)
     new Game({ random })
     expect(random).toHaveBeenCalled()
+  })
+})
+
+describe('piezas no estándar', () => {
+  /** Juego cuyo generador devuelve siempre el mismo valor. */
+  const constantGame = (value: number, events: GameEvent[] = []) =>
+    new Game({ random: () => value, onEvent: (e) => events.push(e) })
+
+  /** Prepara 4 filas completas salvo la columna 0 y suelta una I vertical: un Tetris. */
+  function doTetris(g: Game): void {
+    for (let r = ROWS - 4; r < ROWS; r++) g.board[r] = fullRow().map((v, c) => (c === 0 ? 0 : v))
+    g.current = g.makePiece(1)
+    g.rotate()
+    g.current.x = -2
+    g.hardDrop()
+  }
+
+  it('la tirada baja da la pieza hueca (reto)', () => {
+    const g = constantGame(HOLLOW_CHANCE / 2)
+    expect(g.current.type).toBe(HOLLOW)
+    expect(g.next.type).toBe(HOLLOW)
+  })
+
+  it('la tirada intermedia da un pentominó', () => {
+    const g = constantGame(HOLLOW_CHANCE + PENTOMINO_CHANCE / 2)
+    expect(PENTOMINOES).toContain(g.current.type)
+    expect(g.current.type).toBe(PLUS) // randomInt(0, 2) con 0.09 → índice 0
+  })
+
+  it('el resto de tiradas da piezas estándar', () => {
+    const g = constantGame(0.5)
+    expect(g.current.type).toBeGreaterThanOrEqual(1)
+    expect(g.current.type).toBeLessThanOrEqual(STANDARD_COUNT)
+  })
+
+  it('tras un Tetris la siguiente pieza es un single de recompensa', () => {
+    const events: GameEvent[] = []
+    const g = newGame(events)
+    doTetris(g)
+    expect(g.lines).toBe(4)
+    expect(g.next.type).toBe(SINGLE)
+    g.hardDrop() // entra el single en juego
+    expect(g.current.type).toBe(SINGLE)
+    expect(events).toContainEqual(expect.objectContaining({ type: 'popup', text: 'RECOMPENSA' }))
+  })
+
+  it('3 líneas no dan recompensa', () => {
+    const g = constantGame(0.5)
+    for (let r = ROWS - 3; r < ROWS; r++) g.board[r] = fullRow().map((v, c) => (c === 0 ? 0 : v))
+    g.current = g.makePiece(1)
+    g.rotate()
+    g.current.x = -2
+    g.hardDrop()
+    expect(g.lines).toBe(3)
+    expect(g.next.type).not.toBe(SINGLE)
+  })
+
+  it('la recompensa tiene prioridad sobre un power-up pendiente, que llega después', () => {
+    const g = newGame()
+    g.linesToPowerUp = 4 // el Tetris también completa el power-up
+    doTetris(g)
+    expect(g.next.type).toBe(SINGLE)
+    expect(g.pendingPowerUp).toBe(true)
+    g.hardDrop()
+    expect(isPowerUp(g.next.type)).toBe(true)
+  })
+
+  it('al entrar una pieza especial emite popup y evento con sus celdas', () => {
+    const events: GameEvent[] = []
+    const g = constantGame(HOLLOW_CHANCE / 2, events)
+    const special = events.find((e) => e.type === 'special')
+    expect(special).toMatchObject({ type: 'special', kind: 'challenge' })
+    expect(special?.type === 'special' && special.cells).toHaveLength(8)
+    expect(events).toContainEqual(expect.objectContaining({ type: 'popup', text: '¡RETO!' }))
+    expect(g.current.type).toBe(HOLLOW)
+  })
+
+  it('las piezas estándar no emiten eventos especiales', () => {
+    const events: GameEvent[] = []
+    constantGame(0.5, events)
+    expect(events).toHaveLength(0)
+  })
+
+  it('la hueca es simétrica al rotar y la Y vuelve al origen tras 4 giros', () => {
+    const g = newGame()
+    const hollow = g.makePiece(HOLLOW).shape
+    expect(rotateCW(hollow)).toEqual(hollow)
+    const y = g.makePiece(Y_PIECE).shape
+    expect(rotateCW(rotateCW(rotateCW(rotateCW(y))))).toEqual(y)
+  })
+
+  it('todas las piezas nuevas caben en la vista previa 4×4 y aparecen sin colisión', () => {
+    const g = newGame()
+    g.board = createBoard()
+    for (const type of [...PENTOMINOES, SINGLE, HOLLOW]) {
+      const piece = g.makePiece(type)
+      expect(PIECES[type]?.length).toBeLessThanOrEqual(4)
+      expect(piece.shape.flat().filter(Boolean)).toHaveLength(
+        type === SINGLE ? 1 : type === HOLLOW ? 8 : 5,
+      )
+      expect(g.collide(piece.shape, piece.x, piece.y)).toBe(false)
+    }
   })
 })

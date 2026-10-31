@@ -23,6 +23,11 @@ export const COLORS: readonly (string | null)[] = [
   '#7986cb', // 11 power-up: Gravedad
   '#b3e5fc', // 12 power-up: Congelar
   '#e0e0e0', // 13 comodín (creado por Tinte)
+  '#4db6ac', // 14 pentominó +
+  '#dce775', // 15 pentominó U
+  '#9575cd', // 16 pentominó Y
+  '#ffd700', // 17 single (recompensa tras un Tetris)
+  '#a1887f', // 18 hueca 3×3 (reto)
 ]
 
 export const PIECES: readonly (readonly (readonly number[])[] | null)[] = [
@@ -68,6 +73,28 @@ export const PIECES: readonly (readonly (readonly number[])[] | null)[] = [
   [[11]], // Gravedad
   [[12]], // Congelar
   null, // 13 comodín: solo existe en el tablero
+  [
+    [0, 14, 0],
+    [14, 14, 14],
+    [0, 14, 0],
+  ], // pentominó +
+  [
+    [15, 0, 15],
+    [15, 15, 15],
+    [0, 0, 0],
+  ], // pentominó U
+  [
+    [0, 0, 0, 0],
+    [16, 16, 16, 16],
+    [0, 16, 0, 0],
+    [0, 0, 0, 0],
+  ], // pentominó Y
+  [[17]], // single
+  [
+    [18, 18, 18],
+    [18, 0, 18],
+    [18, 18, 18],
+  ], // hueca 3×3
 ]
 
 export const STANDARD_COUNT = 7
@@ -106,3 +133,31 @@ export const FREEZE_MS = 5000
 export const WILDCARD_SCORE = 50
 
 export const isPowerUp = (v: number): boolean => v >= POWER_FIRST && v <= POWER_LAST
+
+// Piezas no estándar
+export const PLUS = 14
+export const U_PIECE = 15
+export const Y_PIECE = 16
+export const SINGLE = 17
+export const HOLLOW = 18
+export const PENTOMINOES = [PLUS, U_PIECE, Y_PIECE] as const
+/** Probabilidad de que la siguiente pieza sea un pentominó (+, U o Y). */
+export const PENTOMINO_CHANCE = 0.1
+/** Probabilidad de la pieza hueca 3×3 («reto»); se evalúa antes que la de pentominó. */
+export const HOLLOW_CHANCE = 0.04
+
+export type SpecialKind = 'pentomino' | 'challenge' | 'reward'
+
+/** Qué tipo de pieza especial es (o null si es estándar / power-up). */
+export function specialKind(type: number): SpecialKind | null {
+  if (type === SINGLE) return 'reward'
+  if (type === HOLLOW) return 'challenge'
+  if ((PENTOMINOES as readonly number[]).includes(type)) return 'pentomino'
+  return null
+}
+
+export const SPECIAL_NAMES: Readonly<Record<SpecialKind, string>> = {
+  pentomino: 'PENTOMINÓ',
+  challenge: '¡RETO!',
+  reward: 'RECOMPENSA',
+}

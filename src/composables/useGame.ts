@@ -1,7 +1,7 @@
 import { inject, markRaw, onMounted, onUnmounted, reactive, type InjectionKey } from 'vue'
 import { Game } from '../engine/game'
 import { isPowerUp } from '../engine/constants'
-import { PopupLayer } from '../render/canvas'
+import { Effects } from '../render/effects'
 
 type FrameListener = (now: number) => void
 
@@ -17,7 +17,8 @@ export interface Hud {
 export interface GameContext {
   /** Instancia del motor. markRaw: Vue no debe envolver el tablero en proxies (se recorre cada frame). */
   game: Game
-  popups: PopupLayer
+  /** Efectos visuales pasajeros (popups, partículas, ondas) generados por eventos del motor. */
+  effects: Effects
   /** Copia reactiva y plana de lo que muestra la interfaz; se sincroniza en cada frame. */
   hud: Hud
   /** Suscribe un dibujado por frame; devuelve la función para darse de baja. */
@@ -48,10 +49,10 @@ function powerUpLabel(game: Game): string {
  * Se cancela en onUnmounted (importante con HMR, o cada recarga dejaría otro bucle).
  */
 export function useGame(): GameContext {
-  const popups = new PopupLayer()
+  const effects = new Effects()
   const game = markRaw(
     new Game({
-      onEvent: (e) => popups.add(e.text, e.color, performance.now()),
+      onEvent: (e) => effects.handle(e, performance.now()),
     }),
   )
   const hud = reactive<Hud>({
@@ -113,8 +114,9 @@ export function useGame(): GameContext {
   }
 
   function restart(): void {
+    // Limpiar antes de reset(): reset() ya puede anunciar una primera pieza especial
+    effects.clear()
     game.reset()
-    popups.clear()
     syncHud()
   }
 
@@ -136,5 +138,5 @@ export function useGame(): GameContext {
   })
 
   syncHud()
-  return { game, popups, hud, onFrame, restart }
+  return { game, effects, hud, onFrame, restart }
 }

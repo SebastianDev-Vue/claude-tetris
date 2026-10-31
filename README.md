@@ -42,6 +42,7 @@ Es una versión jugable de Tetris con todas las mecánicas que esperarías:
 - **Pausa** y **Game Over** con opción de reinicio.
 - **Tema claro / oscuro**.
 - **Power-ups**: cada 8 líneas aparece una pieza especial de 1 bloque (ver abajo).
+- **Piezas no estándar**: pentominós, piezas de reto y recompensas (ver abajo), con halo pulsante y animaciones al entrar en juego.
 
 ### Power-ups
 
@@ -54,6 +55,18 @@ Es una versión jugable de Tetris con todas las mecánicas que esperarías:
 | ❄ Congelar | Detiene la caída automática durante 5 segundos |
 
 El panel lateral muestra cuántas líneas faltan para el siguiente power-up y el tiempo restante de Congelar.
+
+### Piezas no estándar
+
+| Pieza | Bloques | Cuándo aparece |
+| ----- | ------- | -------------- |
+| Pentominó **+** | 5 | Ocasionalmente (10 % entre +, U e Y) |
+| Pentominó **U** | 5 | Ocasionalmente |
+| Pentominó **Y** | 5 | Ocasionalmente |
+| **Single** 1×1 (dorada) | 1 | Como **recompensa** justo después de un Tetris |
+| **Hueca 3×3** | 8 | Como **reto** (4 %): deja un hueco en el centro que solo el single puede tapar limpiamente |
+
+Las piezas especiales brillan con un halo pulsante (también en la vista previa NEXT) y al entrar en juego lanzan chispas; la recompensa suelta estrellas doradas y el reto, ondas de aviso.
 
 ---
 
@@ -98,7 +111,7 @@ El código se divide en tres capas que no se mezclan:
 1. **Motor** (`src/engine/`): TypeScript puro, sin DOM ni Vue.
    - `constants.ts`: tamaño del tablero, colores, formas de las piezas, puntuaciones y power-ups.
    - `game.ts`: la clase `Game` con todo el estado (tablero, pieza actual y siguiente, puntuación, nivel…) y las reglas: colisiones, rotación con _wall kicks_, caída, limpieza de líneas y power-ups. Se maneja con `update(dt)` en cada frame y con métodos de input (`moveLeft`, `rotate`, `hardDrop`…). Comunica los efectos visuales mediante eventos (`onEvent`).
-2. **Render** (`src/render/canvas.ts`): dibuja el tablero, la pieza fantasma, las vistas previas y los textos flotantes sobre un `<canvas>`.
+2. **Render** (`src/render/`): `canvas.ts` dibuja el tablero, la pieza fantasma y las vistas previas; `effects.ts` gestiona los efectos pasajeros (textos flotantes, partículas y ondas) a partir de los eventos del motor.
 3. **Interfaz Vue** (`src/composables/`, `src/components/`):
    - `useGame()` crea el motor, el único bucle `requestAnimationFrame`, los atajos de teclado y una copia reactiva (`hud`) de los datos que muestra el panel.
    - `useTheme()` gestiona el tema claro/oscuro.
@@ -108,7 +121,7 @@ Algunas decisiones de diseño:
 
 - **El tablero no es reactivo.** El motor se marca con `markRaw` para que Vue no lo envuelva en proxies; el canvas lo lee directamente en cada frame.
 - **El bucle corre siempre** mientras la app está montada; el motor ignora `update()` en pausa o tras game over. Así reanudar nunca hace caer la pieza de golpe y no puede quedar un bucle vivo tras perder.
-- **El tipo de pieza es también su índice de color**: las formas se rellenan con su propio número (1–13) y esos valores se copian al tablero tal cual.
+- **El tipo de pieza es también su índice de color**: las formas se rellenan con su propio número (1–18) y esos valores se copian al tablero tal cual.
 
 ### Flujo del juego
 
@@ -143,7 +156,7 @@ bun run format             # Oxfmt (sin punto y coma, comillas simples)
 
 > No uses `bun test`: lanza el test runner propio de Bun en lugar de Vitest.
 
-Los tests (`src/engine/__tests__/game.spec.ts`) cubren el motor: colisiones, rotación y _wall kicks_, caída, pausa, game over, puntuación, niveles y cada power-up. El generador aleatorio se inyecta para que sean deterministas.
+Los tests (`src/engine/__tests__/game.spec.ts`) cubren el motor: colisiones, rotación y _wall kicks_, caída, pausa, game over, puntuación, niveles, cada power-up y las piezas no estándar. `src/render/__tests__/effects.spec.ts` comprueba la capa de efectos con un contexto de canvas falso. El generador aleatorio se inyecta para que sean deterministas.
 
 ---
 
@@ -174,7 +187,9 @@ Los tests (`src/engine/__tests__/game.spec.ts`) cubren el motor: colisiones, rot
 │   │   └── __tests__/
 │   │       └── game.spec.ts   # Tests del motor (Vitest)
 │   ├── render/
-│   │   └── canvas.ts          # Dibujo en canvas y textos flotantes
+│   │   ├── canvas.ts          # Dibujo del tablero y vistas previas
+│   │   ├── effects.ts         # Popups, partículas y ondas
+│   │   └── __tests__/         # Tests de los efectos
 │   ├── composables/
 │   │   ├── useGame.ts         # Puente motor ↔ Vue, bucle y teclado
 │   │   └── useTheme.ts        # Tema claro / oscuro
@@ -203,6 +218,8 @@ Parámetros fáciles de ajustar en `src/engine/constants.ts`:
 | `INITIAL_DROP_INTERVAL` | Velocidad inicial de caída en ms             | `1000`                |
 | `LINES_PER_POWERUP`     | Líneas necesarias para el siguiente power-up | `8`                   |
 | `FREEZE_MS`             | Duración de Congelar en ms                   | `5000`                |
+| `PENTOMINO_CHANCE`      | Probabilidad de pentominó                    | `0.1`                 |
+| `HOLLOW_CHANCE`         | Probabilidad de la pieza hueca (reto)        | `0.04`                |
 
 El tamaño del canvas se calcula a partir de `COLS`, `ROWS` y `BLOCK`, así que no hace falta tocar nada más.
 

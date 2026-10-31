@@ -5,7 +5,7 @@ import { drawBoard } from '../render/canvas'
 import { useGameContext } from '../composables/useGame'
 
 const props = defineProps<{ gridColor: string }>()
-const { game, popups, onFrame } = useGameContext()
+const { game, effects, onFrame } = useGameContext()
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
 
 let off: (() => void) | undefined
@@ -13,8 +13,8 @@ let off: (() => void) | undefined
 onMounted(() => {
   const ctx = canvas.value!.getContext('2d')!
   off = onFrame((now) => {
-    drawBoard(ctx, game, props.gridColor)
-    popups.draw(ctx, now)
+    drawBoard(ctx, game, props.gridColor, now)
+    effects.draw(ctx, now)
   })
 })
 

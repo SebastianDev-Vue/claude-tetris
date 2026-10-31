@@ -20,7 +20,7 @@ let off: (() => void) | undefined
 
 onMounted(() => {
   const ctx = canvas.value!.getContext('2d')!
-  off = onFrame(() => drawPreview(ctx, props.piece(), props.cellSize, props.cells))
+  off = onFrame((now) => drawPreview(ctx, props.piece(), props.cellSize, props.cells, now))
 })
 
 onUnmounted(() => off?.())
