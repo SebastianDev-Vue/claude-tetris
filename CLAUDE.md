@@ -22,7 +22,7 @@ Don't use `bun test`: it runs bun's own test runner instead of Vitest. Run `form
 Opening `index.html` directly over `file://` doesn't work (ES modules); always go through Vite.
 
 **Dependencies are always kept on their latest versions** (user preference): add with `bun add <pkg>@latest` (writes a `^x.y.z` range), check with `bun outdated`. Intentional exceptions:
-- `typescript` is the create-vue `--tsgo` alias `npm:typescript-native-bridge@latest` (TS 7 native compiler exposed through a TS-6-compatible API so `vue-tsc` keeps working). Plain `typescript@7` breaks `vue-tsc`.
+- `typescript` is the create-vue `--tsgo` alias to `typescript-native-bridge`, **pinned to a concrete version (never `@latest`)**. It exposes the TS 7 native compiler through a TS-6-compatible API so `vue-tsc` keeps working; it's the path validated by the Vue language-tools maintainer (vuejs/language-tools#5381). Plain `typescript@7` breaks `vue-tsc`. Upgrade by bumping the pinned version (`bun pm view typescript-native-bridge version`). Revisit when TS 7.1 can type-check `.vue` files natively.
 - `@types/node` stays on `^24` to match the installed Node 24 and `@tsconfig/node24`.
 
 TS configs follow create-vue: `tsconfig.app.json` (src, `noUncheckedIndexedAccess` on, `@/` alias), `tsconfig.vitest.json` (`src/**/__tests__/*`), `tsconfig.node.json` (config files). Because of `noUncheckedIndexedAccess`, access the board through `Game.cell()` / `Game.setCell()` and iterate shapes with `forEachCell()` instead of raw `board[r][c]`.
