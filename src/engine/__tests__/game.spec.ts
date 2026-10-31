@@ -182,6 +182,42 @@ describe('líneas, puntuación y nivel', () => {
   })
 })
 
+describe('nivel inicial', () => {
+  it('reset() empieza en el nivel inicial con su velocidad', () => {
+    const g = newGame()
+    g.setStartLevel(5)
+    expect(g.level).toBe(1) // solo afecta a la próxima partida
+    g.reset()
+    expect(g.level).toBe(5)
+    expect(g.dropInterval).toBe(640)
+  })
+
+  it('se acota a 1–10', () => {
+    const g = newGame()
+    g.setStartLevel(99)
+    expect(g.startLevel).toBe(10)
+    g.setStartLevel(0)
+    expect(g.startLevel).toBe(1)
+  })
+
+  it('las líneas no bajan del nivel inicial y suben al superarlo', () => {
+    const events: GameEvent[] = []
+    const g = newGame(events)
+    g.setStartLevel(3)
+    g.reset()
+    g.board[ROWS - 1] = fullRow().map((v, c) => (c === COLS - 1 ? 0 : v))
+    g.setCell(ROWS - 2, 0, 5)
+    place(g, 1, COLS - 4, ROWS - 2)
+    expect(g.level).toBe(3)
+    expect(events.some((e) => e.type === 'popup' && e.text.startsWith('NIVEL'))).toBe(false)
+    g.lines = 39
+    g.board[ROWS - 1] = fullRow().map((v, c) => (c === COLS - 1 ? 0 : v))
+    place(g, 1, COLS - 4, ROWS - 2)
+    expect(g.level).toBe(5)
+    expect(events.some((e) => e.type === 'popup' && e.text === 'NIVEL 5')).toBe(true)
+  })
+})
+
 describe('power-ups', () => {
   it('cada LINES_PER_POWERUP líneas el siguiente es un power-up', () => {
     const g = newGame()

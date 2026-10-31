@@ -1180,3 +1180,40 @@ kbd {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent);
 }
+
+/* ===== Menú de pausa: nivel inicial y lista de controles ===== */
+.pause-level {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.pause-level select {
+  margin-top: 0;
+  cursor: pointer;
+}
+
+.pause-hint {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.pause-controls {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 6px 16px;
+  justify-content: center;
+  text-align: left;
+}
+
+.pause-controls li {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
