@@ -6,6 +6,9 @@ import { SKILLS, type SkillId } from '../engine/skills'
 import { Effects } from '../render/effects'
 import { Sfx } from '../audio/sfx'
 
+// Tope del dt por frame: al volver de una pestaña oculta rAF entrega minutos de golpe
+const MAX_FRAME_MS = 100
+
 type FrameListener = (now: number) => void
 
 export interface Hud {
@@ -161,7 +164,7 @@ export function useGame(): GameContext {
   }
 
   function frame(now: number): void {
-    if (!hud.menu && !hud.skillMenu) game.update(now - lastTime)
+    if (!hud.menu && !hud.skillMenu) game.update(Math.min(now - lastTime, MAX_FRAME_MS))
     lastTime = now
     syncHud()
     listeners.forEach((fn) => fn(now))
