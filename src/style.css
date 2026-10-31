@@ -129,7 +129,7 @@ body {
   color: var(--accent);
 }
 
-#next-canvas {
+.preview {
   display: block;
   border: 1px solid var(--canvas-border);
   background: var(--canvas-bg);
@@ -174,8 +174,15 @@ kbd {
   border-radius: 4px;
 }
 
-.overlay.hidden {
-  display: none;
+/* Transición de entrada/salida del overlay (<Transition name="fade">) */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
 .overlay-box {
@@ -186,20 +193,20 @@ kbd {
   align-items: center;
 }
 
-#overlay-title {
+.overlay-title {
   font-size: 28px;
   font-weight: 800;
   letter-spacing: 4px;
   color: var(--danger);
 }
 
-#overlay-score {
+.overlay-score {
   font-family: 'Courier New', Courier, monospace;
   font-size: 14px;
   color: var(--accent);
 }
 
-#restart-btn {
+.restart-btn {
   margin-top: 8px;
   background: var(--btn-bg);
   color: var(--btn-text);
@@ -213,7 +220,7 @@ kbd {
   transition: background 0.15s;
 }
 
-#restart-btn:hover {
+.restart-btn:hover {
   background: var(--btn-hover);
 }
 

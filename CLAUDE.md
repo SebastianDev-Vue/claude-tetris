@@ -4,29 +4,45 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Running the project
 
-There is no build step, package manager, linter, or test suite — it's plain HTML/CSS/JS with zero dependencies. Verification is manual, in a browser.
+Vite + Vue 3 + TypeScript app. **Package manager is bun** (user preference; lockfile is `bun.lock`; don't use npm/npx or add a `package-lock.json`).
 
 ```bash
-start index.html        # Windows: open directly, works fine over file://
-python3 -m http.server 8000   # or: npx serve .   (optional local server)
+bun install
+bun run dev         # dev server with HMR at http://localhost:5173
+bun run test        # Vitest, engine unit tests (tests/*.test.ts)
+bun run typecheck   # vue-tsc --noEmit
+bun run build       # typecheck + production build into dist/
+bun run preview     # serve dist/
 ```
+
+Use `bun run test`, **not** `bun test`: the latter runs bun's own test runner instead of Vitest.
+
+Opening `index.html` directly over `file://` no longer works (ES modules); always go through Vite.
+
+**Dependencies are always kept on their latest versions** (user preference). Exception: `typescript` is pinned to the newest 6.x, because the latest `vue-tsc` (Volar) requires `typescript <7` and crashes on TS 7 (`ERR_PACKAGE_PATH_NOT_EXPORTED ./lib/tsc`). Re-check that when upgrading.
 
 ## Architecture
 
-All game logic lives in `game.js` as one flat, global script (no modules, no exports). Key cross-file and cross-function invariants:
+Three layers, strictly separated:
 
-- **Canvas size is not derived from constants.** `game.js` defines `COLS`/`ROWS`/`BLOCK` (10/20/30), but the actual pixel sizes are hardcoded in `index.html`: the board canvas (`300x600`) and the next-piece canvas (`120x120`). If you change `COLS`, `ROWS`, or `BLOCK`, update both canvas elements too — board must be `COLS*BLOCK` × `ROWS*BLOCK`. The next-piece canvas size is independent, driven by the local `NB` constant inside `drawNext()`, not `BLOCK`.
-- **Piece type doubles as color index.** `PIECES[type]` shapes are filled with the piece's own type number (1–7); `merge()` copies those values directly into the `board` matrix, and `drawBlock()` looks them up in `COLORS` by that same index. `0` always means an empty cell. Adding a new piece means extending `PIECES` and `COLORS` together, in sync, appending at the end. Current index map: 1–7 standard tetrominoes, 8–12 power-ups (1×1, `POWER_FIRST..POWER_LAST`), 13 wildcard/comodín (board-only, `PIECES[13]` is `null`). `CELL_ICONS` maps an index to a glyph that `drawBlock()` paints on top.
-- **`lockPiece()` is the pipeline every feature hooks into**: `merge()` → `resolvePowerUp()` (consumes power-up cells and applies their effect) → `clearLines()` → `spawn()`. `spawn()` refills `next` through `pickNextPiece()`, the single place that decides which piece comes next (e.g. a pending power-up every `LINES_PER_POWERUP` lines).
-- **Congelar** is `frozenMs`, decremented inside `loop()` by `dt`; while it's > 0 `dropAccum` doesn't grow. Because it only decreases inside the loop, pausing preserves it automatically.
-- **Popups** (`addPopup()` / `drawPopups()`) are timestamp-based floating texts drawn at the end of `draw()`.
-- **State is a single global `let` block** (board, current, next, score, lines, level, paused, gameOver, dropInterval, animId, etc.). `init()` is the only reset path — called once at script load and again on restart-button click.
-- **Rotation is transpose+reverse, not SRS.** `tryRotate()` rotates via `rotateCW()` then tries a flat horizontal kick offset list `[0, -1, 1, -2, 2]`. There's no per-piece rotation-state tracking, which real SRS kick tables would require.
-- **The loop is a `requestAnimationFrame` accumulator** (`loop()`), stepping the piece down when `dropAccum >= dropInterval`. Its handle (`animId`) is touched from three places: `togglePause`, `endGame`, `init`. When resuming from pause, `lastTime` is reset to `performance.now()` first — skipping that makes the accumulated pause time count as elapsed drop time and the piece falls instantly.
-- **Two canvases, one draw helper.** `drawBlock()` takes the target context and cell size as parameters, so it's shared between the main board (`ctx`, `BLOCK`) and the next-piece preview (`nextCtx`, `NB`).
-- **Speed/scoring curve lives in `clearLines()`**: level increases every 10 lines, and `dropInterval = max(100, 1000 - (level-1)*90)`.
+- **`src/engine/`: pure TS, no DOM, no Vue, no timers.** `constants.ts` holds the tables; `game.ts` holds the `Game` class with all state and rules. Callers drive it with `update(dt)` once per frame plus input methods (`moveLeft`, `rotate`, `hardDrop`, `togglePause`…), which ignore input themselves when paused or game over. Randomness is injected (`new Game({ random })`) so tests are deterministic. Visual side effects go out as `GameEvent`s through `onEvent` (currently `popup`).
+- **`src/render/canvas.ts`: canvas drawing only.** `drawBlock()` takes the context and cell size, so the board (`BLOCK`) and previews (`drawPreview`) share it. `PopupLayer` holds timestamp-based floating texts.
+- **Vue (`src/composables`, `src/components`): UI only.** `useGame()` (called once in `App.vue`, shared via `provide(GameKey)` / `useGameContext()`) owns the engine instance, the single `requestAnimationFrame` loop, the keyboard listener and a flat reactive `hud` copy synced every frame. Canvas components subscribe with `onFrame(cb)`.
 
-## Gotchas
+Key invariants:
 
-- When game over happens via natural drop (piece locks → `spawn()` → `endGame()` from inside `loop()`), `endGame()`'s `cancelAnimationFrame(animId)` is a no-op because `animId` is the frame already executing. `loop()` must therefore check `gameOver` itself and not schedule another frame — otherwise the loop runs forever behind the overlay, merging and spawning pieces. `loop()` also returns early if `gameOver || paused` as a guard against stray queued frames.
-- All user-facing text (overlay, HTML labels, README) is in Spanish — match that for any new UI strings.
+- **Never make the engine reactive.** The `Game` instance is `markRaw`; the board is walked every frame and Vue proxies would slow it down. The UI reads the `hud` snapshot, not the engine directly (canvas drawing is the exception: it reads the engine every frame).
+- **The rAF loop always runs while mounted**; pause/game over are handled by `Game.update()` returning early. That's why there's no stop/resume logic and why resume never adds the paused time (`lastTime` advances every frame). The loop and keydown listener **must** be torn down in `onUnmounted`, or every HMR reload leaves a duplicate loop running.
+- **Piece type doubles as color index.** `PIECES[type]` shapes are filled with their own type; `merge()` copies them into `board`; `drawBlock()` looks them up in `COLORS`. `0` = empty. Extend `PIECES` and `COLORS` together, appending at the end. Current map: 1–7 standard tetrominoes, 8–12 power-ups (1×1, `POWER_FIRST..POWER_LAST`), 13 wildcard/comodín (board-only, `PIECES[13]` is `null`). `CELL_ICONS` maps an index to a glyph that `drawBlock()` paints on top.
+- **`Game.lockPiece()` is the pipeline every feature hooks into**: `merge()` → `resolvePowerUp()` → `clearLines()` → `spawn()`. `spawn()` refills `next` via `pickNextPiece()`, the single place that decides which piece comes next.
+- **`Game.reset()` is the only reset path** (constructor and the restart button).
+- **Canvas size is derived from constants** in `GameBoard.vue` (`COLS*BLOCK` × `ROWS*BLOCK`); previews from their `cells`/`cellSize` props.
+- **Rotation is transpose+reverse, not SRS**, with horizontal kicks `[0, -1, 1, -2, 2]` and no rotation-state tracking.
+- **Congelar** is `frozenMs`, only decremented inside `update()`, so pausing preserves it.
+- **Speed/scoring curve lives in `clearLines()`**: level every 10 lines, `dropInterval = max(100, 1000 - (level-1)*90)`.
+- **Theme**: `useTheme()` sets `data-theme` on `<html>`; the canvas can't read CSS, so `gridColor` is copied from `--grid` whenever the theme changes.
+
+## Conventions
+
+- All user-facing text (UI, README, code comments) is in Spanish.
+- Every engine rule change should come with a Vitest test in `tests/`.
