@@ -52,34 +52,34 @@
   --energy: #f9a825;
 }
 
-/* Modo retro: terminal de fósforo verde de 1984. Va después de los temas y con
+/* Modo retro: consola 8-bit con paleta limitada. Va después de los temas y con
    [data-theme] también, para ganarles sea cual sea el tema activo. */
 :root[data-style='retro'],
 :root[data-style='retro'][data-theme] {
-  --bg: #000;
-  --text: #33ff33;
-  --accent: #33ff33;
-  --title-glow: rgba(51, 255, 51, 0.6);
+  --bg: #10102a;
+  --text: #fcfcfc;
+  --accent: #f8c838;
+  --title-glow: transparent;
   --canvas-bg: #000;
-  --canvas-border: #1f9e1f;
+  --canvas-border: #fcfcfc;
   --board-shadow: transparent;
-  --label: #1f9e1f;
-  --muted: #1f9e1f;
+  --label: #8c8cdc;
+  --muted: #8c8cdc;
   --kbd-bg: #000;
-  --kbd-border: #1f9e1f;
-  --kbd-text: #33ff33;
+  --kbd-border: #fcfcfc;
+  --kbd-text: #fcfcfc;
   --overlay-bg: rgba(0, 0, 0, 0.8);
-  --danger: #33ff33;
-  --btn-bg: #33ff33;
+  --danger: #f05050;
+  --btn-bg: #f8c838;
   --btn-text: #000;
-  --btn-hover: #7dff7d;
+  --btn-hover: #fce08c;
   --grid: #000;
-  --combo: #33ff33;
-  --combo-glow: rgba(51, 255, 51, 0.5);
-  --b2b: #33ff33;
-  --win: #33ff33;
+  --combo: #f05050;
+  --combo-glow: transparent;
+  --b2b: #f8c838;
+  --win: #50d070;
   --menu-bg: rgba(0, 0, 0, 0.92);
-  --energy: #33ff33;
+  --energy: #50d070;
 }
 
 *,
@@ -585,68 +585,50 @@ kbd {
   filter: grayscale(1);
 }
 
-/* ---- Marco del tablero (en retro lleva el pozo de texto) ---- */
+/* ---- Marco del tablero ---- */
 .board-frame {
   position: relative;
   display: flex;
 }
 
-.board-column {
-  display: flex;
-  flex-direction: column;
-}
-
-/* ---- Modo retro: terminal de 1984 ---- */
+/* ---- Modo retro: consola 8-bit ---- */
 :root[data-style='retro'] body,
 :root[data-style='retro'] button,
-:root[data-style='retro'] kbd {
-  font-family: 'Courier New', Courier, monospace;
+:root[data-style='retro'] kbd,
+:root[data-style='retro'] .value {
+  font-family: 'Press Start 2P', monospace;
+  /* la fuente bitmap es muy ancha: se ajusta a la altura de letra de las demás */
+  font-size-adjust: 0.42;
+  -webkit-font-smoothing: none;
 }
 
-:root[data-style='retro'] body {
-  text-shadow: 0 0 4px rgba(51, 255, 51, 0.55); /* brillo del fósforo */
-}
-
-/* Sin esquinas redondeadas ni sombras de color: todo es texto verde sobre negro */
+/* Sin esquinas redondeadas: todo son píxeles */
 :root[data-style='retro'] *,
 :root[data-style='retro'] *::before,
 :root[data-style='retro'] *::after {
   border-radius: 0 !important;
 }
 
-:root[data-style='retro'] #board,
+:root[data-style='retro'] canvas {
+  image-rendering: pixelated;
+}
+
 :root[data-style='retro'] .preview {
-  border-color: transparent;
-  box-shadow: none;
+  border: 3px solid var(--canvas-border);
+  box-shadow: 0 0 0 3px #000;
 }
 
-/* Paredes del pozo: una línea de texto por fila del tablero */
-.well-wall {
-  display: flex;
-  flex-direction: column;
-  font-weight: 700;
-  font-size: 20px;
-  line-height: var(--block);
-  color: var(--text);
+/* Marco en píxeles del tablero: bandas duras alternas, sin desenfoque */
+:root[data-style='retro'] #board {
+  border: 3px solid #000;
+  box-shadow:
+    0 0 0 3px var(--canvas-border),
+    0 0 0 6px #000,
+    0 0 0 9px var(--label),
+    0 0 0 12px #000;
 }
 
-.well-wall span {
-  height: var(--block);
-}
-
-.well-floor {
-  width: 0;
-  min-width: 100%;
-  overflow: hidden;
-  white-space: nowrap;
-  font-weight: 700;
-  font-size: 20px;
-  line-height: var(--block);
-  letter-spacing: 1px;
-  color: var(--text);
-}
-
-/* Líneas de barrido del CRT por encima de todo el pozo */
+/* Líneas de barrido del CRT por encima del tablero */
 .board-frame.retro::after {
   content: '';
   position: absolute;
@@ -654,8 +636,8 @@ kbd {
   pointer-events: none;
   background: repeating-linear-gradient(
     to bottom,
-    rgba(0, 0, 0, 0.35) 0,
-    rgba(0, 0, 0, 0.35) 1px,
+    rgba(0, 0, 0, 0.25) 0,
+    rgba(0, 0, 0, 0.25) 1px,
     transparent 1px,
     transparent 3px
   );
@@ -669,17 +651,15 @@ kbd {
 
 :root[data-style='retro'] #board.board--slow,
 :root[data-style='retro'] #board.board--frozen {
-  border-color: var(--accent);
-  box-shadow: 0 0 16px rgba(51, 255, 51, 0.5);
-}
-
-/* Los emojis de las habilidades también en monocromo */
-:root[data-style='retro'] .skill-icon {
-  filter: grayscale(1) brightness(1.4);
+  box-shadow:
+    0 0 0 3px var(--accent),
+    0 0 0 6px #000,
+    0 0 0 9px var(--accent),
+    0 0 0 12px #000;
 }
 
 :root[data-style='retro'] .skill-btn:hover,
 :root[data-style='retro'] .skill-btn:focus-visible {
   border-color: var(--accent);
-  box-shadow: 0 0 10px var(--title-glow);
+  box-shadow: 0 0 0 3px var(--accent);
 }

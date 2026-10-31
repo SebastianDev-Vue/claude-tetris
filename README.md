@@ -50,7 +50,7 @@ Es una versión jugable de Tetris con todas las mecánicas que esperarías:
 - **Modo desafío**: Maratón y 5 desafíos con objetivos (ver abajo).
 - **Habilidades**: barra de energía que se carga limpiando líneas y se gasta en 5 habilidades.
 - **Hold**: guarda una pieza para más tarde (una vez por turno).
-- **Modo retro**: aspecto de terminal de fósforo verde de 1984 (tecla `R`).
+- **Modo retro**: aspecto de consola 8-bit con paleta que cambia por nivel (tecla `R`).
 - **Power-ups**: cada 8 líneas aparece una pieza especial de 1 bloque (ver abajo).
 - **Piezas no estándar**: pentominós, piezas de reto y recompensas (ver abajo), con halo pulsante y animaciones al entrar en juego.
 
@@ -129,12 +129,12 @@ Pulsa **`C`** para guardar la pieza actual en el slot **HOLD** (panel izquierdo)
 
 ### Modo retro
 
-El botón **Modo retro** (arriba a la derecha) o la tecla **`R`** convierten el juego en un terminal de fósforo verde de 1984:
+El botón **Modo retro** (arriba a la derecha) o la tecla **`R`** dan al juego un aspecto de consola 8-bit:
 
-- Todo es texto verde sobre negro, en fuente monoespaciada, con un ligero brillo de fósforo.
-- Cada bloque se dibuja como `[]`. Los power-ups son su letra (`B` Bomba, `R` Rayo, `T` Tinte, `G` Gravedad, `F` Congelar); el comodín es `**`, la basura `::` y los bloques fijos `##`.
-- No hay colores, rejilla, pieza fantasma ni halos. Los efectos (popups, chispas, ondas) también salen en verde.
-- El pozo está dibujado con texto: paredes `<!` `!>` y base `=====` / `\/\/\/`. Encima hay líneas de barrido de monitor CRT.
+- Los bloques se dibujan en píxeles gruesos, con contorno negro, luz, sombra y un destello en la esquina.
+- La paleta es limitada (tres colores) y **cambia con cada nivel**; hay 10 paletas que rotan. Los power-ups llevan su letra (`B` Bomba, `R` Rayo, `T` Tinte, `G` Gravedad, `F` Congelar), el comodín es blanco con `*`, y la basura y los bloques fijos son grises.
+- Los textos usan una fuente bitmap pixelada. No hay rejilla, pieza fantasma ni halos. Los efectos (popups, chispas, ondas) salen en un solo color de la paleta del nivel.
+- El tablero tiene un marco de bandas en píxeles y, encima, líneas de barrido de monitor CRT.
 
 Se puede activar en cualquier momento: en el menú, jugando, en pausa o al terminar. Mientras está activo, el botón de tema claro/oscuro se desactiva, y al salir se recupera el tema que tenías.
 

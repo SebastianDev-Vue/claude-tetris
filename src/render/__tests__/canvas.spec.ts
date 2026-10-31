@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { BOMB, COLORS, GARBAGE } from '@/engine/constants'
 import { Game } from '@/engine/game'
-import { RETRO_GREEN, drawBlock, drawBoard, drawPreview } from '@/render/canvas'
+import { drawBlock, drawBoard, drawPreview, retroColor, retroPalette } from '@/render/canvas'
 import { Effects } from '@/render/effects'
 
 interface Call {
@@ -34,20 +34,31 @@ function recordingContext() {
 const opts = (retro: boolean) => ({ gridColor: '#222', retro })
 
 describe('drawBlock en modo retro', () => {
-  it('un bloque normal es el texto [] en verde, sin rectángulos de color', () => {
+  it('un bloque normal es un bloque en píxeles con el color de la paleta del nivel', () => {
     const { ctx, named } = recordingContext()
-    drawBlock(ctx, 0, 0, 1, 30, 1, true)
-    expect(named('fillRect')).toHaveLength(0)
-    expect(named('fillText')).toEqual([
-      expect.objectContaining({ args: ['[]', 15, 16], fillStyle: RETRO_GREEN }),
-    ])
+    drawBlock(ctx, 0, 0, 1, 30, 1, 1)
+    expect(named('fillText')).toHaveLength(0)
+    const rects = named('fillRect')
+    expect(rects[0]).toEqual(expect.objectContaining({ args: [0, 0, 30, 30], fillStyle: '#000' }))
+    expect(rects[1]).toEqual(
+      expect.objectContaining({ args: [3, 3, 24, 24], fillStyle: retroPalette(1)[0] }),
+    )
   })
 
-  it('los bloques con significado tienen su propia marca', () => {
+  it('la paleta cambia con el nivel y rota cada 10 niveles', () => {
+    expect(retroColor(1, 1)).not.toBe(retroColor(1, 2))
+    expect(retroColor(1, 11)).toBe(retroColor(1, 1))
+    // cada pieza toma uno de los tres colores según su tipo
+    expect(retroColor(2, 1)).toBe(retroPalette(1)[1])
+    expect(retroColor(4, 1)).toBe(retroPalette(1)[0])
+  })
+
+  it('power-ups llevan su letra y la basura tiene color fijo', () => {
     const { ctx, named } = recordingContext()
-    drawBlock(ctx, 0, 0, BOMB, 30, 1, true)
-    drawBlock(ctx, 0, 0, GARBAGE, 30, 1, true)
-    expect(named('fillText').map((c) => c.args[0])).toEqual(['B', '::'])
+    drawBlock(ctx, 0, 0, BOMB, 30, 1, 1)
+    drawBlock(ctx, 0, 0, GARBAGE, 30, 1, 1)
+    expect(named('fillText').map((c) => c.args[0])).toEqual(['B'])
+    expect(retroColor(GARBAGE, 1)).toBe(retroColor(GARBAGE, 5))
   })
 
   it('fuera de retro se sigue dibujando con el color de la pieza', () => {
@@ -63,12 +74,21 @@ describe('drawBoard en modo retro', () => {
     g.current = g.makePiece(1) // I horizontal: 4 celdas
     return g
   }
+  const RECTS_PER_RETRO_BLOCK = 7
 
   it('sin rejilla ni pieza fantasma: solo las 4 celdas de la pieza', () => {
     const { ctx, named } = recordingContext()
     drawBoard(ctx, game(), opts(true), 0)
     expect(named('stroke')).toHaveLength(0)
-    expect(named('fillText')).toHaveLength(4)
+    expect(named('fillRect')).toHaveLength(4 * RECTS_PER_RETRO_BLOCK)
+  })
+
+  it('usa la paleta del nivel actual', () => {
+    const g = game()
+    g.level = 3
+    const { ctx, named } = recordingContext()
+    drawBoard(ctx, g, opts(true), 0)
+    expect(named('fillRect')[1]?.fillStyle).toBe(retroPalette(3)[0])
   })
 
   it('el modo normal dibuja rejilla y fantasma', () => {
@@ -78,23 +98,23 @@ describe('drawBoard en modo retro', () => {
     expect(named('fillRect').length).toBe(4 * 2 * 2) // pieza + fantasma, bloque + brillo
   })
 
-  it('las vistas previas también cambian a texto', () => {
+  it('las vistas previas también cambian a píxeles', () => {
     const { ctx, named } = recordingContext()
-    drawPreview(ctx, game().current, 30, 4, 0, true)
-    expect(named('fillText')).toHaveLength(4)
-    expect(named('fillRect')).toHaveLength(0)
+    drawPreview(ctx, game().current, 30, 4, 0, 1)
+    expect(named('fillRect')).toHaveLength(4 * RECTS_PER_RETRO_BLOCK)
   })
 })
 
-describe('efectos monocromos', () => {
+describe('efectos de un solo color', () => {
   it('con tint todas las partículas y popups usan ese color', () => {
+    const tint = retroPalette(1)[0]
     const fx = new Effects()
     fx.handle({ type: 'popup', text: 'TETRIS', color: '#4dd0e1' }, 0)
     fx.handle({ type: 'special', kind: 'reward', cells: [{ x: 1, y: 1 }], color: '#ffd700' }, 0)
     const { ctx, calls } = recordingContext()
-    fx.draw(ctx, 16, RETRO_GREEN)
+    fx.draw(ctx, 16, tint)
     const painted = calls.filter((c) => ['fillRect', 'fill', 'fillText'].includes(c.name))
     expect(painted.length).toBeGreaterThan(0)
-    expect(painted.every((c) => c.fillStyle === RETRO_GREEN)).toBe(true)
+    expect(painted.every((c) => c.fillStyle === tint)).toBe(true)
   })
 })

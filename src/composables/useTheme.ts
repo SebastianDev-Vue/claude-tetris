@@ -4,7 +4,7 @@ export type Theme = 'dark' | 'light'
 
 export interface ThemeContext {
   theme: Ref<Theme>
-  /** Modo retro (terminal de 1984): sustituye al tema mientras está activo. */
+  /** Modo retro (consola 8-bit): sustituye al tema mientras está activo. */
   retro: Ref<boolean>
   gridColor: Ref<string>
   toggleTheme: () => void

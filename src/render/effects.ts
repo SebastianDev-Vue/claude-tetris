@@ -28,7 +28,7 @@ export class PopupLayer {
     this.items = []
   }
 
-  /** `tint`: color único que sustituye a todos (modo retro monocromo). */
+  /** `tint`: color único que sustituye a todos (modo retro: un color de la paleta del nivel). */
   draw(ctx: Ctx, now: number, tint: string | null = null): void {
     this.items = this.items.filter((p) => now - p.born < this.duration)
     if (!this.items.length) return
@@ -36,9 +36,7 @@ export class PopupLayer {
     ctx.save()
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.font = tint
-      ? 'bold 20px "Courier New", Courier, monospace'
-      : 'bold 22px system-ui, sans-serif'
+    ctx.font = tint ? '14px "Press Start 2P", monospace' : 'bold 22px system-ui, sans-serif'
     ctx.strokeStyle = 'rgba(0,0,0,0.6)'
     ctx.lineWidth = 3
     this.items.forEach((p, i) => {
@@ -134,7 +132,7 @@ export class ParticleLayer {
     this.rings = []
   }
 
-  /** `tint`: color único que sustituye a todos (modo retro monocromo). */
+  /** `tint`: color único que sustituye a todos (modo retro: un color de la paleta del nivel). */
   draw(ctx: Ctx, now: number, tint: string | null = null): void {
     // dt acotado: si la pestaña estuvo oculta no queremos un salto enorme
     const dt = this.last ? Math.min(now - this.last, 50) : 16
@@ -201,7 +199,7 @@ class FlashLayer {
     this.items = []
   }
 
-  /** `tint`: color único que sustituye a todos (modo retro monocromo). */
+  /** `tint`: color único que sustituye a todos (modo retro: un color de la paleta del nivel). */
   draw(ctx: Ctx, now: number, tint: string | null = null): void {
     this.items = this.items.filter((f) => now - f.born < FLASH_MS)
     if (!this.items.length) return
@@ -271,7 +269,7 @@ class VanishLayer {
     this.items = []
   }
 
-  /** `tint`: color único que sustituye a todos (modo retro monocromo). */
+  /** `tint`: color único que sustituye a todos (modo retro: un color de la paleta del nivel). */
   draw(ctx: Ctx, now: number, tint: string | null = null): void {
     this.items = this.items.filter((f) => now - f.born < VANISH_MS)
     if (!this.items.length) return
@@ -431,7 +429,7 @@ export class Effects {
     this.timers = []
   }
 
-  /** `tint`: color único que sustituye a todos (modo retro monocromo). */
+  /** `tint`: color único que sustituye a todos (modo retro: un color de la paleta del nivel). */
   draw(ctx: Ctx, now: number, tint: string | null = null): void {
     const due = this.timers.filter((t) => t.at <= now)
     if (due.length) {
