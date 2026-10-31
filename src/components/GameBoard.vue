@@ -6,7 +6,7 @@ import { useGameContext } from '../composables/useGame'
 import { useThemeContext } from '../composables/useTheme'
 
 const { game, effects, hud, onFrame } = useGameContext()
-const { gridColor, retro } = useThemeContext()
+const { gridColor, skin, retro } = useThemeContext()
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
 
 let off: (() => void) | undefined
@@ -14,7 +14,7 @@ let off: (() => void) | undefined
 onMounted(() => {
   const ctx = canvas.value!.getContext('2d')!
   off = onFrame((now) => {
-    const style = { gridColor: gridColor.value, retro: retro.value }
+    const style = { gridColor: gridColor.value, skin: skin.value }
     // Limpiar sin transformación y luego desplazar todo el frame según la sacudida
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
@@ -22,7 +22,7 @@ onMounted(() => {
     ctx.setTransform(1, 0, 0, 1, shake.x, shake.y)
     drawBoard(ctx, game, style, now)
     // retro: efectos de un solo color, el primero de la paleta del nivel
-    effects.draw(ctx, now, style.retro ? retroPalette(game.level)[0] : null)
+    effects.draw(ctx, now, retro.value ? retroPalette(game.level)[0] : null)
     ctx.setTransform(1, 0, 0, 1, 0, 0)
   })
 })
@@ -31,7 +31,7 @@ onUnmounted(() => off?.())
 </script>
 
 <template>
-  <!-- En retro el marco lleva bordes en píxeles y líneas de barrido CRT (style.css) -->
+  <!-- En la skin 8-bit el marco lleva bordes en píxeles y líneas de barrido CRT (style.css) -->
   <div class="board-frame" :class="{ retro }">
     <!-- El tamaño se deriva de las constantes del motor -->
     <!-- Ralentizar / Congelar tiñen el borde del tablero mientras duran -->

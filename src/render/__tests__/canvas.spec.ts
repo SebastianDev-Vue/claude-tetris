@@ -2,13 +2,22 @@
 import { describe, expect, it } from 'vitest'
 import { BOMB, COLORS, GARBAGE } from '@/engine/constants'
 import { Game } from '@/engine/game'
-import { drawBlock, drawBoard, drawPreview, retroColor, retroPalette } from '@/render/canvas'
+import {
+  drawBlock,
+  drawBoard,
+  drawPreview,
+  pastelColor,
+  retroColor,
+  retroPalette,
+  type Skin,
+} from '@/render/canvas'
 import { Effects } from '@/render/effects'
 
 interface Call {
   name: string
   args: unknown[]
   fillStyle: unknown
+  shadowBlur: unknown
 }
 
 /** Contexto 2D falso que registra cada llamada junto al fillStyle vigente. */
@@ -19,7 +28,12 @@ function recordingContext() {
     get(target, key) {
       if (key in target) return target[key]
       return (...args: unknown[]) => {
-        calls.push({ name: String(key), args, fillStyle: target.fillStyle })
+        calls.push({
+          name: String(key),
+          args,
+          fillStyle: target.fillStyle,
+          shadowBlur: target.shadowBlur,
+        })
       }
     },
     set(target, key, value) {
@@ -31,12 +45,12 @@ function recordingContext() {
   return { ctx, calls, named }
 }
 
-const opts = (retro: boolean) => ({ gridColor: '#222', retro })
+const opts = (skin: Skin) => ({ gridColor: '#222', skin })
 
 describe('drawBlock en modo retro', () => {
   it('un bloque normal es un bloque en píxeles con el color de la paleta del nivel', () => {
     const { ctx, named } = recordingContext()
-    drawBlock(ctx, 0, 0, 1, 30, 1, 1)
+    drawBlock(ctx, 0, 0, 1, 30, 1, '8bit', 1)
     expect(named('fillText')).toHaveLength(0)
     const rects = named('fillRect')
     expect(rects[0]).toEqual(expect.objectContaining({ args: [0, 0, 30, 30], fillStyle: '#000' }))
@@ -55,8 +69,8 @@ describe('drawBlock en modo retro', () => {
 
   it('power-ups llevan su letra y la basura tiene color fijo', () => {
     const { ctx, named } = recordingContext()
-    drawBlock(ctx, 0, 0, BOMB, 30, 1, 1)
-    drawBlock(ctx, 0, 0, GARBAGE, 30, 1, 1)
+    drawBlock(ctx, 0, 0, BOMB, 30, 1, '8bit', 1)
+    drawBlock(ctx, 0, 0, GARBAGE, 30, 1, '8bit', 1)
     expect(named('fillText').map((c) => c.args[0])).toEqual(['B'])
     expect(retroColor(GARBAGE, 1)).toBe(retroColor(GARBAGE, 5))
   })
@@ -78,7 +92,7 @@ describe('drawBoard en modo retro', () => {
 
   it('sin rejilla ni pieza fantasma: solo las 4 celdas de la pieza', () => {
     const { ctx, named } = recordingContext()
-    drawBoard(ctx, game(), opts(true), 0)
+    drawBoard(ctx, game(), opts('8bit'), 0)
     expect(named('stroke')).toHaveLength(0)
     expect(named('fillRect')).toHaveLength(4 * RECTS_PER_RETRO_BLOCK)
   })
@@ -87,21 +101,73 @@ describe('drawBoard en modo retro', () => {
     const g = game()
     g.level = 3
     const { ctx, named } = recordingContext()
-    drawBoard(ctx, g, opts(true), 0)
+    drawBoard(ctx, g, opts('8bit'), 0)
     expect(named('fillRect')[1]?.fillStyle).toBe(retroPalette(3)[0])
   })
 
   it('el modo normal dibuja rejilla y fantasma', () => {
     const { ctx, named } = recordingContext()
-    drawBoard(ctx, game(), opts(false), 0)
+    drawBoard(ctx, game(), opts('retro'), 0)
     expect(named('stroke')).toHaveLength(1)
     expect(named('fillRect').length).toBe(4 * 2 * 2) // pieza + fantasma, bloque + brillo
   })
 
   it('las vistas previas también cambian a píxeles', () => {
     const { ctx, named } = recordingContext()
-    drawPreview(ctx, game().current, 30, 4, 0, 1)
+    drawPreview(ctx, game().current, 30, 4, 0, '8bit', 1)
     expect(named('fillRect')).toHaveLength(4 * RECTS_PER_RETRO_BLOCK)
+  })
+})
+
+describe('skins', () => {
+  it('neón: borde con halo shadowBlur del color de la pieza, envuelto en save/restore', () => {
+    const { ctx, calls, named } = recordingContext()
+    drawBlock(ctx, 0, 0, 1, 30, 1, 'neon')
+    const stroke = named('strokeRect')[0]
+    expect(stroke?.shadowBlur).toBeGreaterThan(0)
+    expect(ctx.shadowColor).toBe(COLORS[1])
+    const names = calls.map((c) => c.name)
+    expect(names.indexOf('save')).toBeLessThan(names.indexOf('strokeRect'))
+    expect(names.indexOf('restore')).toBeGreaterThan(names.indexOf('strokeRect'))
+  })
+
+  it('pastel: color aclarado en un rectángulo redondeado', () => {
+    const { ctx, named } = recordingContext()
+    drawBlock(ctx, 0, 0, 1, 30, 1, 'pastel')
+    expect(named('roundRect')).toHaveLength(1)
+    expect(named('fill')[0]?.fillStyle).toBe(pastelColor(1))
+    expect(pastelColor(1)).not.toBe(COLORS[1])
+    expect(pastelColor(5)).toBe('rgb(241, 178, 178)') // #e57373 mezclado con blanco al 45 %
+  })
+
+  it('pastel sin roundRect (navegadores antiguos) usa un rectángulo normal', () => {
+    const { ctx, named } = recordingContext()
+    ;(ctx as unknown as Record<string, unknown>).roundRect = undefined
+    drawBlock(ctx, 0, 0, 1, 30, 1, 'pastel')
+    expect(named('rect')).toHaveLength(1)
+  })
+
+  it('pixel art: color plano y textura de tablero de ajedrez encima', () => {
+    const { ctx, named } = recordingContext()
+    drawBlock(ctx, 0, 0, 1, 30, 1, 'pixel')
+    const rects = named('fillRect')
+    expect(rects[0]?.fillStyle).toBe(COLORS[1])
+    expect(rects.length).toBe(1 + 18) // 6×6 "píxeles" de 5 px, la mitad sombreados
+  })
+
+  it('las vistas previas usan la skin indicada', () => {
+    const { ctx, named } = recordingContext()
+    drawPreview(ctx, new Game({ random: () => 0.5 }).makePiece(1), 30, 4, 0, 'pastel')
+    expect(named('roundRect')).toHaveLength(4)
+  })
+
+  it('el tablero en neón conserva rejilla y fantasma', () => {
+    const g = new Game({ random: () => 0.5 })
+    g.current = g.makePiece(1)
+    const { ctx, named } = recordingContext()
+    drawBoard(ctx, g, opts('neon'), 0)
+    expect(named('stroke')).toHaveLength(1)
+    expect(named('strokeRect')).toHaveLength(8)
   })
 })
 

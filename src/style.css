@@ -464,7 +464,7 @@ kbd {
 }
 
 #theme-toggle,
-#retro-toggle {
+#skin-select {
   background: var(--canvas-bg);
   color: var(--text);
   border: 1px solid var(--canvas-border);
@@ -476,7 +476,7 @@ kbd {
 }
 
 #theme-toggle:hover:not(:disabled),
-#retro-toggle:hover {
+#skin-select:hover {
   border-color: var(--accent);
 }
 
@@ -662,4 +662,38 @@ kbd {
 :root[data-style='retro'] .skill-btn:focus-visible {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent);
+}
+
+/* ---- Skins: selector y skin neón ---- */
+.skin-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--label);
+}
+
+/* Neón: todo negro para que destaque el halo de los bloques. Con [data-theme] también,
+   para ganar a cualquiera de los dos temas. */
+:root[data-skin='neon'],
+:root[data-skin='neon'][data-theme] {
+  --bg: #000;
+  --text: #e8f6ff;
+  --accent: #00e5ff;
+  --title-glow: rgba(0, 229, 255, 0.6);
+  --canvas-bg: #000;
+  --canvas-border: #00e5ff;
+  --board-shadow: rgba(0, 229, 255, 0.35);
+  --label: #6a7fa0;
+  --muted: #8899b0;
+  --kbd-bg: #05050a;
+  --kbd-border: #00e5ff;
+  --kbd-text: #c8f6ff;
+  --overlay-bg: rgba(0, 0, 0, 0.8);
+  --btn-bg: #00e5ff;
+  --btn-text: #000;
+  --btn-hover: #7ff3ff;
+  --grid: #0c1420;
+  --menu-bg: rgba(0, 0, 0, 0.92);
 }

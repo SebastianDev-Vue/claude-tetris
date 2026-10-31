@@ -16,14 +16,14 @@ const props = withDefaults(
 )
 
 const { hud, onFrame } = useGameContext()
-const { retro } = useThemeContext()
+const { skin } = useThemeContext()
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
 let off: (() => void) | undefined
 
 onMounted(() => {
   const ctx = canvas.value!.getContext('2d')!
   off = onFrame((now) =>
-    drawPreview(ctx, props.piece(), props.cellSize, props.cells, now, retro.value ? hud.level : 0),
+    drawPreview(ctx, props.piece(), props.cellSize, props.cells, now, skin.value, hud.level),
   )
 })
 
