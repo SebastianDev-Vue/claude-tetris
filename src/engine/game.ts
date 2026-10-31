@@ -867,14 +867,17 @@ export class Game {
 
   /** Color del bloque sobre el que cae el Tinte; si no hay, el más abundante del tablero. */
   private tintTargetColor(x: number, y: number): number {
+    // comodines, fijos y basura no son colores: teñirlos ganaría Bloques fijos al instante
+    const tintable = (v: number | undefined) =>
+      !!v && v !== WILDCARD && v !== FIXED && v !== GARBAGE
     const below = this.cell(y + 1, x)
-    if (below && below !== WILDCARD) return below
+    if (below && tintable(below)) return below
     const counts = new Map<number, number>()
     let best = 0,
       bestCount = 0
     for (const row of this.board)
       for (const v of row) {
-        if (!v || v === WILDCARD) continue
+        if (!tintable(v)) continue
         const n = (counts.get(v) ?? 0) + 1
         counts.set(v, n)
         if (n > bestCount) {

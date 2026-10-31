@@ -5,7 +5,9 @@ import { Game, createBoard, rotateCW, type GameEvent } from '@/engine/game'
 import {
   BOMB,
   COLS,
+  FIXED,
   FREEZE,
+  GARBAGE,
   FREEZE_MS,
   GRAVITY,
   HOLLOW,
@@ -227,6 +229,30 @@ describe('power-ups', () => {
     g.board[ROWS - 1] = [4, 4, 4, 2, 0, 0, 0, 0, 0, 0]
     place(g, TINT, 8, 0)
     expect(rowOf(g, ROWS - 1).slice(0, 4)).toEqual([WILDCARD, WILDCARD, WILDCARD, 2])
+  })
+
+  it('Tinte nunca convierte bloques fijos ni basura en comodines', () => {
+    // a) cae sobre un bloque fijo: usa el color normal más abundante
+    const a = newGame()
+    a.board[ROWS - 1] = [FIXED, FIXED, FIXED, GARBAGE, 2, 2, 0, 0, 0, 0]
+    place(a, TINT, 1, ROWS - 2)
+    expect(a.board[ROWS - 1]).toEqual([FIXED, FIXED, FIXED, GARBAGE, 13, 13, 0, 0, 0, 0])
+    // b) en el vacío, aunque los fijos sean lo más abundante
+    const b = newGame()
+    b.board[ROWS - 1] = [FIXED, FIXED, FIXED, FIXED, GARBAGE, GARBAGE, GARBAGE, 4, 4, 0]
+    place(b, TINT, 8, 0)
+    expect(b.board[ROWS - 1]).toEqual([
+      FIXED,
+      FIXED,
+      FIXED,
+      FIXED,
+      GARBAGE,
+      GARBAGE,
+      GARBAGE,
+      13,
+      13,
+      0,
+    ])
   })
 
   it('los comodines desaparecen con la siguiente limpieza y puntúan', () => {
