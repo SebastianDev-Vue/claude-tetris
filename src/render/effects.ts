@@ -28,14 +28,17 @@ export class PopupLayer {
     this.items = []
   }
 
-  draw(ctx: Ctx, now: number): void {
+  /** `tint`: color único que sustituye a todos (modo retro monocromo). */
+  draw(ctx: Ctx, now: number, tint: string | null = null): void {
     this.items = this.items.filter((p) => now - p.born < this.duration)
     if (!this.items.length) return
     const { width, height } = ctx.canvas
     ctx.save()
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.font = 'bold 22px system-ui, sans-serif'
+    ctx.font = tint
+      ? 'bold 20px "Courier New", Courier, monospace'
+      : 'bold 22px system-ui, sans-serif'
     ctx.strokeStyle = 'rgba(0,0,0,0.6)'
     ctx.lineWidth = 3
     this.items.forEach((p, i) => {
@@ -44,7 +47,7 @@ export class PopupLayer {
       const scale = t < 0.15 ? 0.6 + (t / 0.15) * 0.4 : 1
       const y = height / 2 - 40 * t + i * 28
       ctx.globalAlpha = 1 - t
-      ctx.fillStyle = p.color
+      ctx.fillStyle = tint ?? p.color
       ctx.setTransform(scale, 0, 0, scale, width / 2, y)
       ctx.strokeText(p.text, 0, 0)
       ctx.fillText(p.text, 0, 0)
@@ -131,7 +134,8 @@ export class ParticleLayer {
     this.rings = []
   }
 
-  draw(ctx: Ctx, now: number): void {
+  /** `tint`: color único que sustituye a todos (modo retro monocromo). */
+  draw(ctx: Ctx, now: number, tint: string | null = null): void {
     // dt acotado: si la pestaña estuvo oculta no queremos un salto enorme
     const dt = this.last ? Math.min(now - this.last, 50) : 16
     this.last = now
@@ -144,7 +148,7 @@ export class ParticleLayer {
       const t = (now - r.born) / r.duration
       if (t < 0) continue // onda programada con retraso: aún no empieza
       ctx.globalAlpha = (1 - t) * 0.8
-      ctx.strokeStyle = r.color
+      ctx.strokeStyle = tint ?? r.color
       ctx.lineWidth = 3 * (1 - t) + 1
       ctx.beginPath()
       ctx.arc(r.x, r.y, r.maxRadius * easeOut(t), 0, Math.PI * 2)
@@ -155,7 +159,7 @@ export class ParticleLayer {
       p.x += p.vx * dt
       p.y += p.vy * dt
       ctx.globalAlpha = p.life / p.maxLife
-      ctx.fillStyle = p.color
+      ctx.fillStyle = tint ?? p.color
       if (p.star) drawStar(ctx, p.x, p.y, p.size, (p.maxLife - p.life) / 150)
       else ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size)
     }
@@ -197,14 +201,15 @@ class FlashLayer {
     this.items = []
   }
 
-  draw(ctx: Ctx, now: number): void {
+  /** `tint`: color único que sustituye a todos (modo retro monocromo). */
+  draw(ctx: Ctx, now: number, tint: string | null = null): void {
     this.items = this.items.filter((f) => now - f.born < FLASH_MS)
     if (!this.items.length) return
     ctx.save()
     for (const f of this.items) {
       const t = (now - f.born) / FLASH_MS
       ctx.globalAlpha = (1 - t) * 0.85
-      ctx.fillStyle = f.color
+      ctx.fillStyle = tint ?? f.color
       // la banda se estrecha verticalmente mientras se apaga
       const h = BLOCK * (1 - t * 0.6)
       ctx.fillRect(0, f.row * BLOCK + (BLOCK - h) / 2, COLS * BLOCK, h)
@@ -266,14 +271,15 @@ class VanishLayer {
     this.items = []
   }
 
-  draw(ctx: Ctx, now: number): void {
+  /** `tint`: color único que sustituye a todos (modo retro monocromo). */
+  draw(ctx: Ctx, now: number, tint: string | null = null): void {
     this.items = this.items.filter((f) => now - f.born < VANISH_MS)
     if (!this.items.length) return
     ctx.save()
     for (const f of this.items) {
       const t = (now - f.born) / VANISH_MS
       ctx.globalAlpha = (1 - t) * 0.9
-      ctx.fillStyle = f.color
+      ctx.fillStyle = tint ?? f.color
       for (const { x, y } of f.cells)
         ctx.fillRect(x * BLOCK + 1, y * BLOCK + 1, BLOCK - 2, BLOCK - 2)
     }
@@ -425,15 +431,16 @@ export class Effects {
     this.timers = []
   }
 
-  draw(ctx: Ctx, now: number): void {
+  /** `tint`: color único que sustituye a todos (modo retro monocromo). */
+  draw(ctx: Ctx, now: number, tint: string | null = null): void {
     const due = this.timers.filter((t) => t.at <= now)
     if (due.length) {
       this.timers = this.timers.filter((t) => t.at > now)
       for (const t of due) t.run(now)
     }
-    this.vanish.draw(ctx, now)
-    this.flashes.draw(ctx, now)
-    this.particles.draw(ctx, now)
-    this.popups.draw(ctx, now)
+    this.vanish.draw(ctx, now, tint)
+    this.flashes.draw(ctx, now, tint)
+    this.particles.draw(ctx, now, tint)
+    this.popups.draw(ctx, now, tint)
   }
 }

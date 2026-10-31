@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { provide } from 'vue'
 import { GameKey, useGame } from './composables/useGame'
-import { useTheme } from './composables/useTheme'
+import { ThemeKey, useTheme } from './composables/useTheme'
 import GameBoard from './components/GameBoard.vue'
 import SidePanel from './components/SidePanel.vue'
 import LeftPanel from './components/LeftPanel.vue'
@@ -9,11 +9,11 @@ import GameOverlay from './components/GameOverlay.vue'
 import ThemeToggle from './components/ThemeToggle.vue'
 
 provide(GameKey, useGame())
-const { theme, gridColor, toggleTheme } = useTheme()
+provide(ThemeKey, useTheme())
 </script>
 
 <template>
-  <ThemeToggle :theme="theme" @toggle="toggleTheme" />
+  <ThemeToggle />
 
   <div class="wrapper">
     <h1 class="title">TETRIS</h1>
@@ -22,7 +22,7 @@ const { theme, gridColor, toggleTheme } = useTheme()
     <div class="game-area">
       <div class="game-container">
         <LeftPanel />
-        <GameBoard :grid-color="gridColor" />
+        <GameBoard />
         <SidePanel />
       </div>
       <GameOverlay />

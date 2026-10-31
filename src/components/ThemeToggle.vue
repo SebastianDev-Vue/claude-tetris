@@ -1,25 +1,38 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { Theme } from '../composables/useTheme'
+import { useThemeContext } from '../composables/useTheme'
 
-const props = defineProps<{ theme: Theme }>()
-const emit = defineEmits<{ toggle: [] }>()
-const light = computed(() => props.theme === 'light')
+const { theme, retro, toggleTheme, toggleRetro } = useThemeContext()
+const light = computed(() => theme.value === 'light')
 
-function onClick(e: MouseEvent): void {
-  emit('toggle')
-  ;(e.currentTarget as HTMLButtonElement).blur() // evita que Space reactive el botón
+/** Quita el foco del botón: si no, Space lo reactivaría al jugar. */
+function run(action: () => void, e: MouseEvent): void {
+  action()
+  ;(e.currentTarget as HTMLButtonElement).blur()
 }
 </script>
 
 <template>
-  <button
-    id="theme-toggle"
-    type="button"
-    :aria-pressed="light"
-    :aria-label="light ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro'"
-    @click="onClick"
-  >
-    {{ light ? 'Modo oscuro' : 'Modo claro' }}
-  </button>
+  <div class="toggles">
+    <button
+      id="retro-toggle"
+      type="button"
+      :aria-pressed="retro"
+      title="Tecla R"
+      @click="run(toggleRetro, $event)"
+    >
+      {{ retro ? 'Salir de retro' : 'Modo retro' }}
+    </button>
+    <!-- En retro el tema claro/oscuro no aplica -->
+    <button
+      id="theme-toggle"
+      type="button"
+      :disabled="retro"
+      :aria-pressed="light"
+      :aria-label="light ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro'"
+      @click="run(toggleTheme, $event)"
+    >
+      {{ light ? 'Modo oscuro' : 'Modo claro' }}
+    </button>
+  </div>
 </template>

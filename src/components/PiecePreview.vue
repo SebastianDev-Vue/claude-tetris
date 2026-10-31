@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, useTemplateRef } from 'vue'
 import type { Piece } from '../engine/game'
 import { drawPreview } from '../render/canvas'
 import { useGameContext } from '../composables/useGame'
+import { useThemeContext } from '../composables/useTheme'
 
 const props = withDefaults(
   defineProps<{
@@ -15,12 +16,15 @@ const props = withDefaults(
 )
 
 const { onFrame } = useGameContext()
+const { retro } = useThemeContext()
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
 let off: (() => void) | undefined
 
 onMounted(() => {
   const ctx = canvas.value!.getContext('2d')!
-  off = onFrame((now) => drawPreview(ctx, props.piece(), props.cellSize, props.cells, now))
+  off = onFrame((now) =>
+    drawPreview(ctx, props.piece(), props.cellSize, props.cells, now, retro.value),
+  )
 })
 
 onUnmounted(() => off?.())

@@ -19,6 +19,7 @@ Implementación de **Tetris** con **Vue 3 + TypeScript**, renderizado en HTML5 C
   - [Modo desafío](#modo-desafío)
   - [Energía y habilidades](#energía-y-habilidades)
   - [Hold](#hold)
+  - [Modo retro](#modo-retro)
 - [Cómo ejecutar el juego](#cómo-ejecutar-el-juego)
 - [Controles](#controles)
 - [Cómo funciona](#cómo-funciona)
@@ -49,6 +50,7 @@ Es una versión jugable de Tetris con todas las mecánicas que esperarías:
 - **Modo desafío**: Maratón y 5 desafíos con objetivos (ver abajo).
 - **Habilidades**: barra de energía que se carga limpiando líneas y se gasta en 5 habilidades.
 - **Hold**: guarda una pieza para más tarde (una vez por turno).
+- **Modo retro**: aspecto de terminal de fósforo verde de 1984 (tecla `R`).
 - **Power-ups**: cada 8 líneas aparece una pieza especial de 1 bloque (ver abajo).
 - **Piezas no estándar**: pentominós, piezas de reto y recompensas (ver abajo), con halo pulsante y animaciones al entrar en juego.
 
@@ -125,6 +127,17 @@ Cada línea limpiada carga **+10** de energía, y un Tetris o un T-spin con lín
 
 Pulsa **`C`** para guardar la pieza actual en el slot **HOLD** (panel izquierdo). Si ya había una guardada, se intercambian. Las piezas salen siempre desde arriba y con su orientación inicial. Solo puede usarse **una vez por turno**: el slot se atenúa hasta que se fija la pieza. Los power-ups también se pueden guardar. Si la pieza que entraría no cabe, el hold se rechaza con el aviso «NO DISPONIBLE». (No se usa `Shift`: en Windows, pulsarlo 5 veces seguidas abre el aviso de «Teclas especiales».)
 
+### Modo retro
+
+El botón **Modo retro** (arriba a la derecha) o la tecla **`R`** convierten el juego en un terminal de fósforo verde de 1984:
+
+- Todo es texto verde sobre negro, en fuente monoespaciada, con un ligero brillo de fósforo.
+- Cada bloque se dibuja como `[]`. Los power-ups son su letra (`B` Bomba, `R` Rayo, `T` Tinte, `G` Gravedad, `F` Congelar); el comodín es `**`, la basura `::` y los bloques fijos `##`.
+- No hay colores, rejilla, pieza fantasma ni halos. Los efectos (popups, chispas, ondas) también salen en verde.
+- El pozo está dibujado con texto: paredes `<!` `!>` y base `=====` / `\/\/\/`. Encima hay líneas de barrido de monitor CRT.
+
+Se puede activar en cualquier momento: en el menú, jugando, en pausa o al terminar. Mientras está activo, el botón de tema claro/oscuro se desactiva, y al salir se recupera el tema que tenías.
+
 ---
 
 ## Cómo ejecutar el juego
@@ -160,6 +173,7 @@ bun run preview    # sirve dist/ localmente
 | `P` o `Esc` | Pausa (con opciones Continuar / Reiniciar / Menú) |
 | `1`–`6`   | Elegir modo en el menú            |
 | `E`       | Menú de habilidades (con la barra de energía llena) |
+| `R`       | Activar / desactivar el modo retro |
 
 ---
 
@@ -176,7 +190,7 @@ El código se divide en tres capas que no se mezclan:
 3. **Interfaz Vue** (`src/composables/`, `src/components/`):
    - `useGame()` crea el motor, el único bucle `requestAnimationFrame`, los atajos de teclado y una copia reactiva (`hud`) de los datos que muestra el panel.
    - `useTheme()` gestiona el tema claro/oscuro.
-   - Componentes: `GameBoard` (canvas del tablero), `LeftPanel` (objetivo, tiempo, controles), `SidePanel` (puntuación, combo, siguiente pieza), `PiecePreview`, `GameOverlay` (menú de modos, pausa y fin de partida con transiciones) y `ThemeToggle`.
+   - Componentes: `GameBoard` (canvas del tablero), `LeftPanel` (objetivo, tiempo, controles), `SidePanel` (puntuación, combo, siguiente pieza), `PiecePreview`, `GameOverlay` (menú de modos, pausa y fin de partida con transiciones) y `ThemeToggle` (botones de tema y modo retro).
 
 Algunas decisiones de diseño:
 
@@ -258,8 +272,8 @@ Los tests (`src/engine/__tests__/game.spec.ts`) cubren el motor: colisiones, rot
 │   │   └── __tests__/         # Tests de los efectos
 │   ├── composables/
 │   │   ├── useGame.ts         # Puente motor ↔ Vue, bucle y teclado
-│   │   └── useTheme.ts        # Tema claro / oscuro
-│   └── components/            # GameBoard, LeftPanel, SidePanel, PiecePreview, GameOverlay, ThemeToggle
+│   │   └── useTheme.ts        # Tema claro / oscuro y modo retro
+│   └── components/            # GameBoard, LeftPanel, SidePanel, PiecePreview, GameOverlay, ThemeToggle (tema + retro)
 ├── env.d.ts
 ├── vite.config.ts             # Vite + Vue + Vue DevTools, alias @/
 ├── vitest.config.ts
