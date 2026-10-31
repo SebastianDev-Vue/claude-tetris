@@ -93,6 +93,8 @@ export type GameEvent =
   | { type: 'skill'; id: SkillId; ok: boolean }
   /** La barra de energía acaba de llenarse. */
   | { type: 'energy-full' }
+  /** La pieza actual ha ido al slot HOLD (o se ha intercambiado con él). */
+  | { type: 'hold' }
 
 export interface GameOptions {
   /** Generador aleatorio en [0, 1); inyectable para tests deterministas. */
@@ -199,6 +201,8 @@ export class Game {
   slowMs = 0
   /** Pieza reservada (slot HOLD). */
   hold: Piece | null = null
+  /** HOLD ya usado en este turno; se libera al salir la siguiente pieza. */
+  holdUsed = false
   private snapshot: Snapshot | null = null
 
   private readonly random: () => number
@@ -274,6 +278,7 @@ export class Game {
     this.peekPieces = 0
     this.slowMs = 0
     this.hold = null
+    this.holdUsed = false
     this.snapshot = null
     this.challenge?.setup?.(this)
     this.queue = []
@@ -488,6 +493,14 @@ export class Game {
     this.lockPiece(dropPoints)
   }
 
+  /** HOLD (teclas C / Shift): una vez por turno. Devuelve si se pudo. */
+  holdPiece(): boolean {
+    if (!this.canAct || this.holdUsed || !this.swapHold()) return false
+    this.holdUsed = true
+    this.emit({ type: 'hold' })
+    return true
+  }
+
   togglePause(): void {
     if (this.gameOver) return
     this.paused = !this.paused
@@ -549,6 +562,7 @@ export class Game {
     this.current = this.queue.shift() ?? this.randomPiece()
     this.refillQueue()
     if (this.peekPieces > 0) this.peekPieces--
+    this.holdUsed = false // cada pieza nueva puede usar HOLD una vez
     if (this.collide(this.current.shape, this.current.x, this.current.y)) {
       this.finish(false, 'No queda espacio para la nueva pieza')
       return
@@ -713,7 +727,10 @@ export class Game {
       case 'undo':
         return this.undo()
       case 'hold':
-        return this.swapHold()
+        // Hold extra: libera HOLD para un segundo uso en este turno
+        if (!this.holdUsed) return false
+        this.holdUsed = false
+        return true
     }
   }
 
@@ -745,6 +762,7 @@ export class Game {
     this.queue = s.queue
     this.hold = s.hold
     this.snapshot = null // un solo nivel de deshacer
+    this.holdUsed = false // la pieza devuelta empieza turno nuevo
     this.setCurrent(piece)
     return true
   }

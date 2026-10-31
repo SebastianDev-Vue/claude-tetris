@@ -38,7 +38,8 @@ export interface Hud {
   /** Efectos temporales activos, para teñir el tablero. */
   slowed: boolean
   frozen: boolean
-  hasHold: boolean
+  /** HOLD ya usado en este turno (el slot se atenúa). */
+  holdUsed: boolean
   canUndo: boolean
   /** Tiempo de juego formateado (m:ss). */
   time: string
@@ -122,7 +123,7 @@ export function useGame(): GameContext {
     peek: false,
     slowed: false,
     frozen: false,
-    hasHold: false,
+    holdUsed: false,
     canUndo: false,
   })
   const listeners = new Set<FrameListener>()
@@ -151,7 +152,7 @@ export function useGame(): GameContext {
     hud.peek = game.peekPieces > 0
     hud.slowed = game.slowMs > 0
     hud.frozen = game.frozenMs > 0
-    hud.hasHold = game.hold !== null
+    hud.holdUsed = game.holdUsed
     hud.canUndo = game.canUndo
   }
 
@@ -226,6 +227,11 @@ export function useGame(): GameContext {
     if (hud.menu) return onMenuKey(e)
     if (hud.skillMenu) return onSkillKey(e)
     switch (e.code) {
+      case 'KeyC':
+      case 'ShiftLeft':
+      case 'ShiftRight':
+        game.holdPiece()
+        break
       case 'KeyE':
         openSkillMenu()
         break

@@ -53,8 +53,8 @@ export const SKILLS: readonly SkillInfo[] = [
   },
   {
     id: 'hold',
-    name: 'Reservar pieza',
-    description: 'Guarda la pieza actual en HOLD (o la cambia por la guardada)',
+    name: 'Hold extra',
+    description: 'Permite usar HOLD otra vez en este mismo turno',
     icon: '📦',
     color: '#90caf9',
   },

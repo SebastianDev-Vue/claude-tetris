@@ -204,27 +204,4 @@ describe('habilidades', () => {
     expect(g.linesToPowerUp).toBe(1)
     expect(isPowerUp(g.next.type)).toBe(false)
   })
-
-  it('Reservar pieza guarda la actual y saca la siguiente de la cola', () => {
-    const g = full(newGame())
-    const current = g.current.type
-    const next = g.next
-    expect(g.useSkill('hold')).toBe(true)
-    expect(g.hold?.type).toBe(current)
-    expect(g.current).toBe(next)
-    expect(g.queue).toHaveLength(QUEUE_SIZE)
-  })
-
-  it('con algo guardado, Reservar pieza lo intercambia por la actual', () => {
-    const g = full(newGame())
-    g.useSkill('hold')
-    const held = g.hold?.type
-    const playing = g.current.type
-    g.current.y = 8
-    g.energy = MAX_ENERGY
-    expect(g.useSkill('hold')).toBe(true)
-    expect(g.current.type).toBe(held)
-    expect(g.current.y).toBe(0)
-    expect(g.hold?.type).toBe(playing)
-  })
 })

@@ -530,3 +530,15 @@ kbd {
   border-color: #b3e5fc;
   box-shadow: 0 0 22px rgba(179, 229, 252, 0.7);
 }
+
+/* ---- HOLD ---- */
+.hold-slot .preview {
+  transition:
+    opacity 0.25s ease,
+    filter 0.25s ease;
+}
+
+.hold-slot.locked .preview {
+  opacity: 0.35;
+  filter: grayscale(1);
+}

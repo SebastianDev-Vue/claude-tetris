@@ -18,6 +18,7 @@ Implementación de **Tetris** con **Vue 3 + TypeScript**, renderizado en HTML5 C
   - [Combos y bonificaciones](#combos-y-bonificaciones)
   - [Modo desafío](#modo-desafío)
   - [Energía y habilidades](#energía-y-habilidades)
+  - [Hold](#hold)
 - [Cómo ejecutar el juego](#cómo-ejecutar-el-juego)
 - [Controles](#controles)
 - [Cómo funciona](#cómo-funciona)
@@ -47,6 +48,7 @@ Es una versión jugable de Tetris con todas las mecánicas que esperarías:
 - **Tema claro / oscuro**.
 - **Modo desafío**: Maratón y 5 desafíos con objetivos (ver abajo).
 - **Habilidades**: barra de energía que se carga limpiando líneas y se gasta en 5 habilidades.
+- **Hold**: guarda una pieza para más tarde (una vez por turno).
 - **Power-ups**: cada 8 líneas aparece una pieza especial de 1 bloque (ver abajo).
 - **Piezas no estándar**: pentominós, piezas de reto y recompensas (ver abajo), con halo pulsante y animaciones al entrar en juego.
 
@@ -117,7 +119,11 @@ Cada línea limpiada carga **+10** de energía, y un Tetris o un T-spin con lín
 | 2 | 🔄 **Intercambiar** | Cambia la pieza actual por otra estándar distinta |
 | 3 | 🐢 **Ralentizar** | La caída va a la mitad de velocidad durante 10 s (el borde del tablero se tiñe de verde) |
 | 4 | ↩ **Deshacer** | Revierte el último fijado (tablero, puntos, líneas, combo y cola) y esa pieza vuelve a salir. Solo un nivel |
-| 5 | 📦 **Reservar pieza** | Guarda la pieza actual en el slot **HOLD** o la cambia por la guardada |
+| 5 | 📦 **Hold extra** | Permite usar **HOLD** una segunda vez en el mismo turno |
+
+### Hold
+
+Pulsa **`C`** o **`Shift`** para guardar la pieza actual en el slot **HOLD** (panel izquierdo). Si ya había una guardada, se intercambian. Las piezas salen siempre desde arriba y con su orientación inicial. Solo puede usarse **una vez por turno**: el slot se atenúa hasta que se fija la pieza. Los power-ups también se pueden guardar.
 
 ---
 
@@ -149,6 +155,7 @@ bun run preview    # sirve dist/ localmente
 | `↑` o `X` | Rotar la pieza en sentido horario |
 | `↓`       | Soft drop (bajar más rápido)      |
 | `Espacio` | Hard drop (caída instantánea)     |
+| `C` o `Shift` | Hold: guardar o intercambiar la pieza |
 | `M`       | Activar / silenciar el sonido     |
 | `P` o `Esc` | Pausa (con opciones Continuar / Reiniciar / Menú) |
 | `1`–`6`   | Elegir modo en el menú            |
