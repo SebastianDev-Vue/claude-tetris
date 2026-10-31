@@ -28,6 +28,8 @@ export const COLORS: readonly (string | null)[] = [
   '#9575cd', // 16 pentominó Y
   '#ffd700', // 17 single (recompensa tras un Tetris)
   '#a1887f', // 18 hueca 3×3 (reto)
+  '#78909c', // 19 basura (desafío Basura)
+  '#546e7a', // 20 bloque fijo (desafío Bloques fijos)
 ]
 
 export const PIECES: readonly (readonly (readonly number[])[] | null)[] = [
@@ -95,6 +97,8 @@ export const PIECES: readonly (readonly (readonly number[])[] | null)[] = [
     [18, 0, 18],
     [18, 18, 18],
   ], // hueca 3×3
+  null, // 19 basura: solo existe en el tablero
+  null, // 20 bloque fijo: solo existe en el tablero
 ]
 
 export const STANDARD_COUNT = 7
@@ -126,6 +130,7 @@ export const CELL_ICONS: Readonly<Record<number, string>> = {
   [GRAVITY]: '⬇',
   [FREEZE]: '❄',
   [WILDCARD]: '★',
+  20: '◆', // bloque fijo
 }
 
 export const LINES_PER_POWERUP = 8
@@ -173,3 +178,9 @@ export const B2B_MULTIPLIER = 1.5
 export const PERFECT_CLEAR_SCORE = 3000
 
 export const CLEAR_NAMES = ['', 'SINGLE', 'DOUBLE', 'TRIPLE', 'TETRIS']
+
+// Modo desafío
+export const GARBAGE = 19
+export const FIXED = 20
+/** Cada cuánto sube una fila de basura en el desafío Basura. */
+export const GARBAGE_INTERVAL_MS = 10_000

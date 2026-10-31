@@ -47,6 +47,21 @@ export class Sfx {
           'triangle',
         )
         break
+      case 'lock':
+        this.tone(note(-21), 0, 0.05, 'triangle', 0.18) // clic grave y corto
+        break
+      case 'garbage':
+        this.sweep(note(-24), note(-33), 0.18, 'square')
+        break
+      case 'finish':
+        if (event.won)
+          this.arpeggio(
+            [0, 4, 7, 12, 7, 12, 16, 19].map((s) => C5 + s),
+            0.09,
+            'square',
+          )
+        else this.arpeggio([C5 + 7, C5 + 3, C5, C5 - 5], 0.16, 'triangle')
+        break
     }
   }
 

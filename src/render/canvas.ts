@@ -66,7 +66,8 @@ function drawPiece(ctx: Ctx, piece: Piece, y: number, alpha = 1): void {
 export function drawBoard(ctx: Ctx, game: Game, gridColor: string, now: number): void {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
   drawGrid(ctx, gridColor)
-  forEachCell(game.board, (r, c, value) => drawBlock(ctx, c, r, value, BLOCK))
+  // Desafío Invisible: los bloques fijados no se ven hasta que termina la partida
+  if (!game.hideLocked) forEachCell(game.board, (r, c, value) => drawBlock(ctx, c, r, value, BLOCK))
   const { current } = game
   drawPiece(ctx, current, game.ghostY(), 0.2)
   withSpecialGlow(ctx, current.type, now, () => drawPiece(ctx, current, current.y))

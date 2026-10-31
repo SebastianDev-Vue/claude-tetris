@@ -1,6 +1,7 @@
 import { inject, markRaw, onMounted, onUnmounted, reactive, type InjectionKey } from 'vue'
 import { Game } from '../engine/game'
 import { isPowerUp } from '../engine/constants'
+import { MODES, formatTime, type GameMode } from '../engine/challenges'
 import { Effects } from '../render/effects'
 import { Sfx } from '../audio/sfx'
 
@@ -17,6 +18,17 @@ export interface Hud {
   combo: number
   b2b: boolean
   muted: boolean
+  /** Pantalla de selección de modo visible (el juego no avanza). */
+  menu: boolean
+  mode: GameMode
+  /** Nombre del desafío activo ('' en Maratón). */
+  challengeName: string
+  /** Progreso del objetivo del desafío ('' en Maratón). */
+  objective: string
+  won: boolean
+  endReason: string
+  /** Tiempo de juego formateado (m:ss). */
+  time: string
 }
 
 export interface GameContext {
@@ -28,7 +40,13 @@ export interface GameContext {
   hud: Hud
   /** Suscribe un dibujado por frame; devuelve la función para darse de baja. */
   onFrame: (fn: FrameListener) => () => void
+  /** Empieza una partida nueva en el modo indicado. */
+  start: (mode: GameMode) => void
+  /** Repite el modo actual. */
   restart: () => void
+  /** Vuelve a la pantalla de selección de modo. */
+  openMenu: () => void
+  togglePause: () => void
 }
 
 export const GameKey: InjectionKey<GameContext> = Symbol('game')
@@ -49,9 +67,10 @@ function powerUpLabel(game: Game): string {
 /**
  * Crea el motor y el único bucle requestAnimationFrame de la app.
  * El bucle corre siempre mientras el componente está montado y el motor ignora update()
- * en pausa / game over, así que no hay que parar ni reanudar el rAF: reanudar nunca
- * acumula el tiempo de pausa y no puede quedar un bucle vivo tras game over.
- * Se cancela en onUnmounted (importante con HMR, o cada recarga dejaría otro bucle).
+ * en pausa / game over (y no se llama con el menú abierto), así que no hay que parar ni
+ * reanudar el rAF: reanudar nunca acumula el tiempo de pausa y no puede quedar un bucle
+ * vivo tras game over. Se cancela en onUnmounted (importante con HMR, o cada recarga
+ * dejaría otro bucle).
  */
 export function useGame(): GameContext {
   const effects = new Effects()
@@ -74,6 +93,13 @@ export function useGame(): GameContext {
     combo: 0,
     b2b: false,
     muted: false,
+    menu: true, // la app arranca en la pantalla de selección de modo
+    mode: 'marathon',
+    challengeName: '',
+    objective: '',
+    won: false,
+    endReason: '',
+    time: '0:00',
   })
   const listeners = new Set<FrameListener>()
   let animId = 0
@@ -90,23 +116,61 @@ export function useGame(): GameContext {
     hud.combo = game.combo
     hud.b2b = game.b2b
     hud.muted = sfx.muted
+    hud.mode = game.mode
+    hud.challengeName = game.challenge?.name ?? ''
+    hud.objective = game.challenge?.progress(game) ?? ''
+    hud.won = game.result === 'won'
+    hud.endReason = game.endReason
+    hud.time = formatTime(game.elapsedMs)
   }
 
   function frame(now: number): void {
-    game.update(now - lastTime)
+    if (!hud.menu) game.update(now - lastTime)
     lastTime = now
     syncHud()
     listeners.forEach((fn) => fn(now))
     animId = requestAnimationFrame(frame)
   }
 
+  function start(mode: GameMode): void {
+    // Limpiar antes de reset(): reset() ya puede anunciar una primera pieza especial
+    effects.clear()
+    game.reset(mode)
+    hud.menu = false
+    syncHud()
+  }
+
+  function restart(): void {
+    start(game.mode)
+  }
+
+  function openMenu(): void {
+    hud.menu = true
+    syncHud()
+  }
+
+  function togglePause(): void {
+    game.togglePause()
+    syncHud()
+  }
+
+  function onMenuKey(e: KeyboardEvent): void {
+    // Teclas 1–6 eligen modo en la pantalla de menú
+    const index = Number(e.key) - 1
+    const mode = MODES[index]
+    if (mode) start(mode.id)
+  }
+
   function onKeydown(e: KeyboardEvent): void {
     sfx.unlock() // el audio solo puede activarse tras un gesto del usuario
+    if (e.code === 'KeyM') {
+      sfx.toggleMute()
+      return syncHud()
+    }
+    if (hud.menu) return onMenuKey(e)
     switch (e.code) {
-      case 'KeyM':
-        sfx.toggleMute()
-        break
       case 'KeyP':
+      case 'Escape':
         game.togglePause()
         break
       case 'ArrowLeft':
@@ -132,13 +196,6 @@ export function useGame(): GameContext {
     syncHud()
   }
 
-  function restart(): void {
-    // Limpiar antes de reset(): reset() ya puede anunciar una primera pieza especial
-    effects.clear()
-    game.reset()
-    syncHud()
-  }
-
   function onFrame(fn: FrameListener): () => void {
     listeners.add(fn)
     return () => listeners.delete(fn)
@@ -157,5 +214,5 @@ export function useGame(): GameContext {
   })
 
   syncHud()
-  return { game, effects, hud, onFrame, restart }
+  return { game, effects, hud, onFrame, start, restart, openMenu, togglePause }
 }

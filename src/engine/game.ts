@@ -30,10 +30,13 @@ import {
   PERFECT_CLEAR_SCORE,
   TSPIN_SCORES,
   T_PIECE,
+  FIXED,
+  GARBAGE,
   isPowerUp,
   specialKind,
   type SpecialKind,
 } from './constants'
+import { REVERSE_FROM_LEVEL, challengeFor, type Challenge, type GameMode } from './challenges'
 
 export type Board = number[][]
 export type Shape = number[][]
@@ -69,6 +72,12 @@ export type GameEvent =
       perfect: boolean
       points: number
     }
+  /** Una pieza se ha fijado. `vanish`: en el desafío Invisible sus bloques dejan de verse. */
+  | { type: 'lock'; cells: Cell[]; color: string; vanish: boolean }
+  /** Ha subido una fila de basura desde abajo. */
+  | { type: 'garbage' }
+  /** La partida terminó: `won` si se cumplió el objetivo del desafío. */
+  | { type: 'finish'; won: boolean }
 
 export interface GameOptions {
   /** Generador aleatorio en [0, 1); inyectable para tests deterministas. */
@@ -102,6 +111,11 @@ export function rotateCW(shape: Shape): Shape {
   )
 }
 
+/** Rotación antihoraria (desafío Rotación inversa): tres giros horarios. */
+export function rotateCCW(shape: Shape): Shape {
+  return rotateCW(rotateCW(rotateCW(shape)))
+}
+
 const KICKS = [0, -1, 1, -2, 2]
 
 /**
@@ -132,6 +146,16 @@ export class Game {
   /** El último movimiento de la pieza actual fue una rotación (para detectar T-spin). */
   lastMoveRotate = false
 
+  // ---- Modo / desafío ----
+  mode: GameMode = 'marathon'
+  /** Tiempo de juego (no avanza en pausa ni tras terminar). */
+  elapsedMs = 0
+  /** Temporizador libre para el desafío activo (p. ej. la próxima fila de basura). */
+  challengeMs = 0
+  /** Resultado al terminar: 'won' solo en desafíos con objetivo cumplido. */
+  result: 'won' | 'lost' | null = null
+  endReason = ''
+
   private readonly random: () => number
   private readonly emit: (event: GameEvent) => void
 
@@ -141,8 +165,27 @@ export class Game {
     this.reset()
   }
 
-  /** Único camino de reinicio. */
-  reset(): void {
+  get challenge(): Challenge | undefined {
+    return challengeFor(this.mode)
+  }
+
+  /** Desafío Rotación inversa a partir de REVERSE_FROM_LEVEL. */
+  get rotationReversed(): boolean {
+    return this.mode === 'reverse' && this.level >= REVERSE_FROM_LEVEL
+  }
+
+  /** Desafío Invisible: los bloques fijados no se dibujan mientras dura la partida. */
+  get hideLocked(): boolean {
+    return this.mode === 'invisible' && !this.gameOver
+  }
+
+  /** Único camino de reinicio. Sin argumento repite el modo actual. */
+  reset(mode: GameMode = this.mode): void {
+    this.mode = mode
+    this.elapsedMs = 0
+    this.challengeMs = 0
+    this.result = null
+    this.endReason = ''
     this.board = createBoard()
     this.score = 0
     this.lines = 0
@@ -158,8 +201,59 @@ export class Game {
     this.combo = 0
     this.b2b = false
     this.lastMoveRotate = false
+    this.challenge?.setup?.(this)
     this.next = this.pickNextPiece()
     this.spawn()
+  }
+
+  // ---- Desafíos ----
+
+  /** Termina la partida (victoria o derrota) y lo anuncia. */
+  private finish(won: boolean, reason: string): void {
+    if (this.gameOver) return
+    this.gameOver = true
+    this.result = won ? 'won' : 'lost'
+    this.endReason = reason
+    this.emit({ type: 'finish', won })
+  }
+
+  /** Comprueba objetivo y derrota del desafío activo. */
+  private checkChallenge(): void {
+    const challenge = this.challenge
+    if (!challenge || this.gameOver) return
+    if (challenge.isWon(this)) return this.finish(true, '¡Objetivo cumplido!')
+    const loss = challenge.lossReason?.(this)
+    if (loss) this.finish(false, loss)
+  }
+
+  /** Sube una fila de basura (con un hueco aleatorio) desde abajo. */
+  addGarbageRow(): void {
+    if (this.board[0]?.some((v) => v !== 0)) return this.finish(false, 'La basura llegó arriba')
+    const hole = this.randomInt(0, COLS - 1)
+    const row = Array.from({ length: COLS }, (_, c) => (c === hole ? 0 : GARBAGE))
+    this.board = [...this.board.slice(1), row]
+    // la pieza en juego sube con el tablero si ahora se solapa
+    if (this.collide(this.current.shape, this.current.x, this.current.y)) {
+      this.current.y--
+      if (this.collide(this.current.shape, this.current.x, this.current.y))
+        return this.finish(false, 'La basura llegó arriba')
+    }
+    this.emit({ type: 'garbage' })
+  }
+
+  /** Rellena las `rows` filas inferiores con bloques fijos, dejando al menos 2 huecos por fila. */
+  placeFixedBlocks(rows: number): void {
+    for (let r = ROWS - rows; r < ROWS; r++) {
+      const row = Array.from({ length: COLS }, () => (this.random() < 0.55 ? FIXED : 0))
+      // Abrir huecos eligiendo solo entre celdas aún llenas: cada vuelta vacía una distinta,
+      // así el bucle siempre termina (elegir una columna cualquiera podía repetirse sin fin)
+      while (row.filter((v) => v === 0).length < 2) {
+        const filled = row.flatMap((v, c) => (v ? [c] : []))
+        const c = filled[this.randomInt(0, filled.length - 1)] ?? 0
+        row[c] = 0
+      }
+      this.board[r] = row
+    }
   }
 
   // ---- Tablero ----
@@ -237,6 +331,10 @@ export class Game {
   /** Avanza el juego dt milisegundos. No hace nada en pausa o tras game over. */
   update(dt: number): void {
     if (!this.canAct) return
+    this.elapsedMs += dt
+    this.challenge?.tick?.(this, dt)
+    this.checkChallenge()
+    if (this.gameOver) return
     if (this.frozenMs > 0) {
       // Congelar: la caída automática no avanza (el jugador sí puede moverse)
       this.frozenMs = Math.max(0, this.frozenMs - dt)
@@ -274,7 +372,9 @@ export class Game {
 
   rotate(): void {
     if (!this.canAct) return
-    const rotated = rotateCW(this.current.shape)
+    const rotated = this.rotationReversed
+      ? rotateCCW(this.current.shape)
+      : rotateCW(this.current.shape)
     for (const kick of KICKS) {
       if (!this.collide(rotated, this.current.x + kick, this.current.y)) {
         this.current.shape = rotated
@@ -313,10 +413,24 @@ export class Game {
 
   lockPiece(): void {
     const tspin = this.isTSpin() // antes de merge(): se evalúa sobre el tablero sin la pieza
+    this.emitLock()
     this.merge()
     this.resolvePowerUp()
     this.clearLines(tspin)
-    this.spawn()
+    this.checkChallenge() // el objetivo se puede cumplir con este fijado
+    if (!this.gameOver) this.spawn()
+  }
+
+  private emitLock(): void {
+    const { type, shape, x, y } = this.current
+    const cells: Cell[] = []
+    forEachCell(shape, (r, c) => cells.push({ x: x + c, y: y + r }))
+    this.emit({
+      type: 'lock',
+      cells,
+      color: COLORS[type] ?? '#fff',
+      vanish: this.mode === 'invisible',
+    })
   }
 
   /**
@@ -348,7 +462,7 @@ export class Game {
     this.current = this.next
     this.next = this.pickNextPiece()
     if (this.collide(this.current.shape, this.current.x, this.current.y)) {
-      this.gameOver = true
+      this.finish(false, 'No queda espacio para la nueva pieza')
       return
     }
     this.announceSpecial()
@@ -398,7 +512,9 @@ export class Game {
       this.popup(`COMODINES +${wild}`, COLORS[WILDCARD])
     }
     if (cleared >= 4) this.pendingReward = true
+    const prevLevel = this.level
     this.level = Math.floor(this.lines / 10) + 1
+    if (this.level > prevLevel) this.onLevelUp(prevLevel)
     this.dropInterval = Math.max(100, INITIAL_DROP_INTERVAL - (this.level - 1) * 90)
     this.linesToPowerUp -= cleared
     if (this.linesToPowerUp <= 0) {
@@ -428,6 +544,12 @@ export class Game {
     if (comboMult >= 2) this.popup(`COMBO x${comboMult}`, '#ff8a80')
     if (perfect) this.popup('PERFECT CLEAR', '#ffffff')
     this.emit({ type: 'clear', rows, lines, combo: comboMult, tspin, b2b, perfect, points })
+  }
+
+  private onLevelUp(prevLevel: number): void {
+    this.popup(`NIVEL ${this.level}`, '#7aa2f7')
+    if (this.mode === 'reverse' && prevLevel < REVERSE_FROM_LEVEL && this.rotationReversed)
+      this.popup('¡ROTACIÓN INVERSA!', '#ff8a80')
   }
 
   private removeWildcards(): number {

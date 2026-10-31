@@ -244,13 +244,58 @@ class Shake {
   }
 }
 
+// ---- Celdas que se desvanecen (desafío Invisible) ----
+
+interface Fading {
+  cells: Cell[]
+  color: string
+  born: number
+}
+
+const VANISH_MS = 650
+
+class VanishLayer {
+  private items: Fading[] = []
+
+  add(cells: Cell[], color: string, now: number): void {
+    this.items.push({ cells, color, born: now })
+  }
+
+  clear(): void {
+    this.items = []
+  }
+
+  draw(ctx: Ctx, now: number): void {
+    this.items = this.items.filter((f) => now - f.born < VANISH_MS)
+    if (!this.items.length) return
+    ctx.save()
+    for (const f of this.items) {
+      const t = (now - f.born) / VANISH_MS
+      ctx.globalAlpha = (1 - t) * 0.9
+      ctx.fillStyle = f.color
+      for (const { x, y } of f.cells)
+        ctx.fillRect(x * BLOCK + 1, y * BLOCK + 1, BLOCK - 2, BLOCK - 2)
+    }
+    ctx.restore()
+  }
+}
+
 // ---- Fachada: traduce eventos del motor a efectos ----
+
+const FIREWORK_COLORS = ['#ff8a80', '#ffd54f', '#81c784', '#4dd0e1', '#ba68c8', '#fff59d']
 
 export class Effects {
   readonly popups = new PopupLayer()
   readonly particles = new ParticleLayer()
   private readonly flashes = new FlashLayer()
+  private readonly vanish = new VanishLayer()
   private readonly shake = new Shake()
+  /** Efectos programados para más adelante (p. ej. fuegos artificiales escalonados). */
+  private timers: { at: number; run: (now: number) => void }[] = []
+
+  private schedule(at: number, run: (now: number) => void): void {
+    this.timers.push({ at, run })
+  }
 
   handle(event: GameEvent, now: number): void {
     switch (event.type) {
@@ -275,6 +320,38 @@ export class Effects {
       case 'clear':
         this.handleClear(event, now)
         break
+      case 'lock':
+        if (event.vanish) this.vanish.add(event.cells, event.color, now)
+        break
+      case 'garbage':
+        this.shake.start(3, now, 220)
+        for (let c = 0; c < COLS; c++)
+          this.particles.burst((c + 0.5) * BLOCK, ROWS * BLOCK - 4, '#b0bec5', 2, { speed: 0.12 })
+        break
+      case 'finish':
+        this.handleFinish(event.won, now)
+        break
+    }
+  }
+
+  private handleFinish(won: boolean, now: number): void {
+    const w = COLS * BLOCK
+    const h = ROWS * BLOCK
+    if (!won) {
+      this.shake.start(5, now, 400)
+      this.particles.ring(w / 2, h / 2, '#e57373', now, BLOCK * 7, 900)
+      return
+    }
+    // fuegos artificiales: 8 explosiones escalonadas en posiciones aleatorias
+    for (let i = 0; i < 8; i++) {
+      this.schedule(now + i * 180, (t) => {
+        const x = w * (0.15 + Math.random() * 0.7)
+        const y = h * (0.15 + Math.random() * 0.5)
+        const color = FIREWORK_COLORS[i % FIREWORK_COLORS.length] ?? '#fff'
+        this.particles.burst(x, y, color, 24, { speed: 0.22 })
+        this.particles.burst(x, y, '#ffffff', 6, { star: true, speed: 0.1 })
+        this.particles.ring(x, y, color, t, BLOCK * 2, 500)
+      })
     }
   }
 
@@ -329,10 +406,18 @@ export class Effects {
     this.popups.clear()
     this.particles.clear()
     this.flashes.clear()
+    this.vanish.clear()
     this.shake.clear()
+    this.timers = []
   }
 
   draw(ctx: Ctx, now: number): void {
+    const due = this.timers.filter((t) => t.at <= now)
+    if (due.length) {
+      this.timers = this.timers.filter((t) => t.at > now)
+      for (const t of due) t.run(now)
+    }
+    this.vanish.draw(ctx, now)
     this.flashes.draw(ctx, now)
     this.particles.draw(ctx, now)
     this.popups.draw(ctx, now)

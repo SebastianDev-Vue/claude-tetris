@@ -51,17 +51,5 @@ const comboLabel = computed(() =>
       <span class="label">NEXT</span>
       <PiecePreview :piece="() => game.next" />
     </div>
-
-    <div class="panel-section controls">
-      <span class="label">CONTROLS</span>
-      <ul>
-        <li><kbd>←</kbd><kbd>→</kbd> mover</li>
-        <li><kbd>↑</kbd> rotar</li>
-        <li><kbd>↓</kbd> bajar</li>
-        <li><kbd>Space</kbd> caída</li>
-        <li><kbd>P</kbd> pausa</li>
-        <li><kbd>M</kbd> sonido: {{ hud.muted ? 'off' : 'on' }}</li>
-      </ul>
-    </div>
   </aside>
 </template>

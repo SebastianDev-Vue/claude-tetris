@@ -16,6 +16,7 @@ Implementación de **Tetris** con **Vue 3 + TypeScript**, renderizado en HTML5 C
   - [Power-ups](#power-ups)
   - [Piezas no estándar](#piezas-no-estándar)
   - [Combos y bonificaciones](#combos-y-bonificaciones)
+  - [Modo desafío](#modo-desafío)
 - [Cómo ejecutar el juego](#cómo-ejecutar-el-juego)
 - [Controles](#controles)
 - [Cómo funciona](#cómo-funciona)
@@ -43,6 +44,7 @@ Es una versión jugable de Tetris con todas las mecánicas que esperarías:
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
 - **Tema claro / oscuro**.
+- **Modo desafío**: Maratón y 5 desafíos con objetivos (ver abajo).
 - **Power-ups**: cada 8 líneas aparece una pieza especial de 1 bloque (ver abajo).
 - **Piezas no estándar**: pentominós, piezas de reto y recompensas (ver abajo), con halo pulsante y animaciones al entrar en juego.
 
@@ -88,6 +90,21 @@ puntos = base × nivel × combo × B2B  (+ perfect clear)
 
 Efectos: destello en las filas limpiadas, barrido de chispas, sacudida del tablero (más fuerte en Tetris, T-spin y perfect clear), ondas para el B2B, lluvia de estrellas en el perfect clear y textos flotantes. Cada jugada tiene su **sonido** sintetizado y el tono sube con el combo (`M` para silenciar). El panel muestra el multiplicador de combo con una animación y la insignia **B2B** cuando el siguiente Tetris o T-spin recibirá la bonificación.
 
+### Modo desafío
+
+Al abrir el juego aparece el menú de modos (teclas `1`–`6` o clic):
+
+| Modo | Objetivo | Regla especial |
+| ---- | -------- | -------------- |
+| **Maratón** | Aguantar todo lo posible | El modo clásico |
+| **Sprint** | Limpiar 40 líneas | Tienes 2:00; si se acaba el tiempo, pierdes |
+| **Basura** | Sobrevivir 3:00 | Cada 10 s sube desde abajo una fila de basura gris con un hueco |
+| **Bloques fijos** | Eliminar todos los bloques fijos (◆) | El tablero empieza con 8 filas parcialmente llenas |
+| **Invisible** | Limpiar 20 líneas | Las piezas se desvanecen al tocar suelo; el tablero se revela al terminar |
+| **Rotación inversa** | Llegar al nivel 5 | Desde el nivel 3 las piezas giran en sentido antihorario |
+
+El panel izquierdo muestra el objetivo con su progreso y el tiempo de juego. Al cumplirlo aparece **¡OBJETIVO CUMPLIDO!** con fuegos artificiales y fanfarria; desde el fin de partida o la pausa puedes **reiniciar** el mismo modo o volver al **menú**.
+
 ---
 
 ## Cómo ejecutar el juego
@@ -118,8 +135,9 @@ bun run preview    # sirve dist/ localmente
 | `↑` o `X` | Rotar la pieza en sentido horario |
 | `↓`       | Soft drop (bajar más rápido)      |
 | `Espacio` | Hard drop (caída instantánea)     |
-| `P`       | Pausar / reanudar                 |
 | `M`       | Activar / silenciar el sonido     |
+| `P` o `Esc` | Pausa (con opciones Continuar / Reiniciar / Menú) |
+| `1`–`6`   | Elegir modo en el menú            |
 
 ---
 
@@ -136,7 +154,7 @@ El código se divide en tres capas que no se mezclan:
 3. **Interfaz Vue** (`src/composables/`, `src/components/`):
    - `useGame()` crea el motor, el único bucle `requestAnimationFrame`, los atajos de teclado y una copia reactiva (`hud`) de los datos que muestra el panel.
    - `useTheme()` gestiona el tema claro/oscuro.
-   - Componentes: `GameBoard` (canvas del tablero), `SidePanel`, `PiecePreview`, `GameOverlay` (pausa / game over con transición) y `ThemeToggle`.
+   - Componentes: `GameBoard` (canvas del tablero), `LeftPanel` (objetivo, tiempo, controles), `SidePanel` (puntuación, combo, siguiente pieza), `PiecePreview`, `GameOverlay` (menú de modos, pausa y fin de partida con transiciones) y `ThemeToggle`.
 
 Algunas decisiones de diseño:
 
@@ -205,6 +223,7 @@ Los tests (`src/engine/__tests__/game.spec.ts`) cubren el motor: colisiones, rot
 │   ├── engine/
 │   │   ├── constants.ts       # Tablas: piezas, colores, puntuación, power-ups
 │   │   ├── game.ts            # Motor del juego (clase Game)
+│   │   ├── challenges.ts      # Modos de juego y desafíos
 │   │   └── __tests__/
 │   │       └── game.spec.ts   # Tests del motor (Vitest)
 │   ├── audio/
@@ -217,7 +236,7 @@ Los tests (`src/engine/__tests__/game.spec.ts`) cubren el motor: colisiones, rot
 │   ├── composables/
 │   │   ├── useGame.ts         # Puente motor ↔ Vue, bucle y teclado
 │   │   └── useTheme.ts        # Tema claro / oscuro
-│   └── components/            # GameBoard, SidePanel, PiecePreview, GameOverlay, ThemeToggle
+│   └── components/            # GameBoard, LeftPanel, SidePanel, PiecePreview, GameOverlay, ThemeToggle
 ├── env.d.ts
 ├── vite.config.ts             # Vite + Vue + Vue DevTools, alias @/
 ├── vitest.config.ts
