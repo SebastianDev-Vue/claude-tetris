@@ -177,6 +177,7 @@ describe('habilidades', () => {
     expect(g.score).toBe(0)
     expect(g.lines).toBe(0)
     expect(g.combo).toBe(0)
+    expect(g.maxCombo).toBe(0)
     expect(g.queue.map((p) => p.type)).toEqual(queueTypes)
     expect(g.current.type).toBe(1)
     expect(g.current.y).toBe(0) // vuelve a salir desde arriba

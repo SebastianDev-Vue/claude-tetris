@@ -497,6 +497,19 @@ describe('combos y bonificaciones', () => {
     expect(g.score).toBe(100 + 200) // segundo clear: 100 × combo x2
   })
 
+  it('maxCombo guarda el mejor combo aunque luego se rompa, y reset lo reinicia', () => {
+    const { g } = setup()
+    g.board[ROWS - 1] = rowWithGaps(9)
+    g.board[ROWS - 2] = rowWithGaps(9)
+    g.setCell(ROWS - 3, 0, 5) // resto
+    place(g, SINGLE, 9, ROWS - 1)
+    place(g, SINGLE, 9, ROWS - 1)
+    place(g, SINGLE, 0, ROWS - 2) // no limpia: rompe el combo
+    expect([g.combo, g.maxCombo]).toEqual([0, 2])
+    g.reset()
+    expect(g.maxCombo).toBe(0)
+  })
+
   it('fijar sin limpiar rompe el combo', () => {
     const { g } = setup()
     g.combo = 3

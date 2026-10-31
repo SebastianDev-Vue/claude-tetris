@@ -147,6 +147,7 @@ interface Snapshot {
   level: number
   dropInterval: number
   combo: number
+  maxCombo: number
   b2b: boolean
   linesToPowerUp: number
   pendingPowerUp: boolean
@@ -183,6 +184,8 @@ export class Game {
   frozenMs = 0
   /** Fijados consecutivos que han limpiado líneas (0 = sin combo). */
   combo = 0
+  /** Mejor combo de la partida (para la tabla de récords). */
+  maxCombo = 0
   /** El último fijado con líneas fue «difícil» (Tetris o T-spin): el siguiente puede ser B2B. */
   b2b = false
   /** El último movimiento de la pieza actual fue una rotación (para detectar T-spin). */
@@ -284,6 +287,7 @@ export class Game {
     this.combo = 0
     this.b2b = false
     this.lastMoveRotate = false
+    this.maxCombo = 0
     this.energy = 0
     this.peekPieces = 0
     this.slowMs = 0
@@ -617,6 +621,7 @@ export class Game {
     ]
     this.lines += cleared
     this.combo++
+    this.maxCombo = Math.max(this.maxCombo, this.combo)
     this.addEnergy(cleared * ENERGY_PER_LINE + (cleared >= 4 || tspin ? ENERGY_BONUS : 0))
     // Los comodines que queden se eliminan con cualquier limpieza de líneas (antes de
     // puntuar, para que cuenten en un posible perfect clear)
@@ -698,6 +703,7 @@ export class Game {
       level: this.level,
       dropInterval: this.dropInterval,
       combo: this.combo,
+      maxCombo: this.maxCombo,
       b2b: this.b2b,
       linesToPowerUp: this.linesToPowerUp,
       pendingPowerUp: this.pendingPowerUp,
@@ -767,6 +773,7 @@ export class Game {
     this.level = s.level
     this.dropInterval = s.dropInterval
     this.combo = s.combo
+    this.maxCombo = s.maxCombo
     this.b2b = s.b2b
     this.linesToPowerUp = s.linesToPowerUp
     this.pendingPowerUp = s.pendingPowerUp
