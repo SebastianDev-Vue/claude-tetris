@@ -19,7 +19,7 @@
         "npm-run-all2": "9.0.4",
         "oxfmt": "0.75.0",
         "oxlint": "1.90.0",
-        "typescript": "npm:typescript-native-bridge@^6.0.3-bridge.19.tsgo.7.0.2",
+        "typescript": "npm:typescript-native-bridge@6.0.3-bridge.19.tsgo.7.0.2",
         "vite": "8.3.5",
         "vite-plugin-vue-devtools": "8.2.1",
         "vitest": "5.0.5",
@@ -28,7 +28,7 @@
     },
   },
   "overrides": {
-    "typescript": "npm:typescript-native-bridge@^6.0.3-bridge.19.tsgo.7.0.2",
+    "typescript": "npm:typescript-native-bridge@6.0.3-bridge.19.tsgo.7.0.2",
   },
   "packages": {
     "@asamuzakjp/css-color": ["@asamuzakjp/css-color@7.1.9", "", { "dependencies": { "@csstools/css-calc": "^3.4.3", "@csstools/css-color-parser": "^4.2.6", "@csstools/css-parser-algorithms": "^4.0.2", "@csstools/css-tokenizer": "^4.0.2", "lru-cache": "^11.5.3" } }, "sha512-vZ6JQVq8Ivgz6b/IBlAf90wZviXdluY13cQOPO+nJHbmXwGrPl2GcpqUY7a55/8ZVdfONXpCFMpRijOBCHNlcQ=="],
