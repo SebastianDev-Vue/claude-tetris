@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { useGameContext } from '../composables/useGame';
-import PiecePreview from './PiecePreview.vue';
+import { useGameContext } from '../composables/useGame'
+import PiecePreview from './PiecePreview.vue'
 
-const { game, hud } = useGameContext();
+const { game, hud } = useGameContext()
 </script>
 
 <template>

@@ -19,7 +19,7 @@
   --grid: #22222e;
 }
 
-:root[data-theme="light"] {
+:root[data-theme='light'] {
   --bg: #f2f3f8;
   --text: #2a2b3a;
   --accent: #3d59a1;
@@ -40,7 +40,9 @@
   --grid: #e3e5ef;
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;

@@ -4,22 +4,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Running the project
 
-Vite + Vue 3 + TypeScript app. **Package manager is bun** (user preference; lockfile is `bun.lock`; don't use npm/npx or add a `package-lock.json`).
+Vite + Vue 3 + TypeScript app scaffolded with the official `bun create vue@latest` (create-vue: `--ts --tsgo --vitest --oxfmt`, ESLint removed in favour of Oxlint only). **Package manager is bun** (user preference; lockfile is `bun.lock`; don't use npm/npx or add a `package-lock.json`).
 
 ```bash
 bun install
-bun run dev         # dev server with HMR at http://localhost:5173
-bun run test        # Vitest, engine unit tests (tests/*.test.ts)
-bun run typecheck   # vue-tsc --noEmit
-bun run build       # typecheck + production build into dist/
-bun run preview     # serve dist/
+bun run dev              # dev server with HMR (+ Vue DevTools) at http://localhost:5173
+bun run test:unit        # Vitest in watch mode; add --run for a single pass
+bun run type-check       # vue-tsc --build (TypeScript 7 / tsgo)
+bun run lint             # oxlint . --fix
+bun run format           # oxfmt src/ (no semicolons, single quotes: .oxfmtrc.json)
+bun run build            # type-check + production build into dist/ (run-p)
+bun run preview          # serve dist/
 ```
 
-Use `bun run test`, **not** `bun test`: the latter runs bun's own test runner instead of Vitest.
+Don't use `bun test`: it runs bun's own test runner instead of Vitest. Run `format`, `lint`, `type-check` and `test:unit --run` before committing.
 
-Opening `index.html` directly over `file://` no longer works (ES modules); always go through Vite.
+Opening `index.html` directly over `file://` doesn't work (ES modules); always go through Vite.
 
-**Dependencies are always kept on their latest versions** (user preference). Exception: `typescript` is pinned to the newest 6.x, because the latest `vue-tsc` (Volar) requires `typescript <7` and crashes on TS 7 (`ERR_PACKAGE_PATH_NOT_EXPORTED ./lib/tsc`). Re-check that when upgrading.
+**Dependencies are always kept on their latest versions** (user preference): add with `bun add <pkg>@latest` (writes a `^x.y.z` range), check with `bun outdated`. Intentional exceptions:
+- `typescript` is the create-vue `--tsgo` alias `npm:typescript-native-bridge@latest` (TS 7 native compiler exposed through a TS-6-compatible API so `vue-tsc` keeps working). Plain `typescript@7` breaks `vue-tsc`.
+- `@types/node` stays on `^24` to match the installed Node 24 and `@tsconfig/node24`.
+
+TS configs follow create-vue: `tsconfig.app.json` (src, `noUncheckedIndexedAccess` on, `@/` alias), `tsconfig.vitest.json` (`src/**/__tests__/*`), `tsconfig.node.json` (config files). Because of `noUncheckedIndexedAccess`, access the board through `Game.cell()` / `Game.setCell()` and iterate shapes with `forEachCell()` instead of raw `board[r][c]`.
 
 ## Architecture
 
@@ -45,4 +51,4 @@ Key invariants:
 ## Conventions
 
 - All user-facing text (UI, README, code comments) is in Spanish.
-- Every engine rule change should come with a Vitest test in `tests/`.
+- Every engine rule change should come with a Vitest test in `src/**/__tests__/*.spec.ts` (engine specs run with `// @vitest-environment node`; the default environment is jsdom).

@@ -1,24 +1,24 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, useTemplateRef } from 'vue';
-import { BLOCK, COLS, ROWS } from '../engine/constants';
-import { drawBoard } from '../render/canvas';
-import { useGameContext } from '../composables/useGame';
+import { onMounted, onUnmounted, useTemplateRef } from 'vue'
+import { BLOCK, COLS, ROWS } from '../engine/constants'
+import { drawBoard } from '../render/canvas'
+import { useGameContext } from '../composables/useGame'
 
-const props = defineProps<{ gridColor: string }>();
-const { game, popups, onFrame } = useGameContext();
-const canvas = useTemplateRef<HTMLCanvasElement>('canvas');
+const props = defineProps<{ gridColor: string }>()
+const { game, popups, onFrame } = useGameContext()
+const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
 
-let off: (() => void) | undefined;
+let off: (() => void) | undefined
 
 onMounted(() => {
-  const ctx = canvas.value!.getContext('2d')!;
-  off = onFrame(now => {
-    drawBoard(ctx, game, props.gridColor);
-    popups.draw(ctx, now);
-  });
-});
+  const ctx = canvas.value!.getContext('2d')!
+  off = onFrame((now) => {
+    drawBoard(ctx, game, props.gridColor)
+    popups.draw(ctx, now)
+  })
+})
 
-onUnmounted(() => off?.());
+onUnmounted(() => off?.())
 </script>
 
 <template>

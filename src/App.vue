@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { provide } from 'vue';
-import { GameKey, useGame } from './composables/useGame';
-import { useTheme } from './composables/useTheme';
-import GameBoard from './components/GameBoard.vue';
-import SidePanel from './components/SidePanel.vue';
-import GameOverlay from './components/GameOverlay.vue';
-import ThemeToggle from './components/ThemeToggle.vue';
+import { provide } from 'vue'
+import { GameKey, useGame } from './composables/useGame'
+import { useTheme } from './composables/useTheme'
+import GameBoard from './components/GameBoard.vue'
+import SidePanel from './components/SidePanel.vue'
+import GameOverlay from './components/GameOverlay.vue'
+import ThemeToggle from './components/ThemeToggle.vue'
 
-provide(GameKey, useGame());
-const { theme, gridColor, toggleTheme } = useTheme();
+provide(GameKey, useGame())
+const { theme, gridColor, toggleTheme } = useTheme()
 </script>
 
 <template>

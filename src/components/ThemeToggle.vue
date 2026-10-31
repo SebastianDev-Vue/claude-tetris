@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import type { Theme } from '../composables/useTheme';
+import { computed } from 'vue'
+import type { Theme } from '../composables/useTheme'
 
-const props = defineProps<{ theme: Theme }>();
-const emit = defineEmits<{ toggle: [] }>();
-const light = computed(() => props.theme === 'light');
+const props = defineProps<{ theme: Theme }>()
+const emit = defineEmits<{ toggle: [] }>()
+const light = computed(() => props.theme === 'light')
 
 function onClick(e: MouseEvent): void {
-  emit('toggle');
-  (e.currentTarget as HTMLButtonElement).blur(); // evita que Space reactive el botón
+  emit('toggle')
+  ;(e.currentTarget as HTMLButtonElement).blur() // evita que Space reactive el botón
 }
 </script>
 

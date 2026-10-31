@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "Vue.volar",
+    "vitest.explorer",
+    "EditorConfig.EditorConfig",
+    "oxc.oxc-vscode"
+  ]
+}

@@ -19,7 +19,7 @@ Implementación de **Tetris** con **Vue 3 + TypeScript**, renderizado en HTML5 C
 - [Cómo funciona](#cómo-funciona)
   - [Arquitectura](#arquitectura)
   - [Flujo del juego](#flujo-del-juego)
-- [Tests](#tests)
+- [Tests y calidad de código](#tests-y-calidad-de-código)
 - [Tecnologías](#tecnologías)
 - [Estructura del proyecto](#estructura-del-proyecto)
 - [Personalización](#personalización)
@@ -59,7 +59,7 @@ El panel lateral muestra cuántas líneas faltan para el siguiente power-up y el
 
 ## Cómo ejecutar el juego
 
-Requiere [Bun](https://bun.sh).
+Requiere [Bun](https://bun.sh). El proyecto se generó con el creador oficial de Vue, `bun create vue@latest` (TypeScript, Vitest, Oxfmt y Oxlint).
 
 ```bash
 bun install        # instala dependencias
@@ -131,26 +131,29 @@ Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), el juego p
 
 ---
 
-## Tests
+## Tests y calidad de código
 
 ```bash
-bun run test        # ejecuta Vitest una vez
-bun run test:watch  # modo watch
-bun run typecheck   # chequeo de tipos con vue-tsc
+bun run test:unit          # Vitest en modo watch
+bun run test:unit --run    # una sola pasada
+bun run type-check         # chequeo de tipos con vue-tsc (TypeScript 7 / tsgo)
+bun run lint               # Oxlint
+bun run format             # Oxfmt (sin punto y coma, comillas simples)
 ```
 
-> Usa `bun run test` y no `bun test`: este último lanza el test runner propio de Bun en lugar de Vitest.
+> No uses `bun test`: lanza el test runner propio de Bun en lugar de Vitest.
 
-Los tests (`tests/game.test.ts`) cubren el motor: colisiones, rotación y _wall kicks_, caída, pausa, game over, puntuación, niveles y cada power-up. El generador aleatorio se inyecta para que sean deterministas.
+Los tests (`src/engine/__tests__/game.spec.ts`) cubren el motor: colisiones, rotación y _wall kicks_, caída, pausa, game over, puntuación, niveles y cada power-up. El generador aleatorio se inyecta para que sean deterministas.
 
 ---
 
 ## Tecnologías
 
 - **Vue 3** (`<script setup>`, composables, `provide`/`inject`, `<Transition>`).
-- **TypeScript** en modo estricto, con `vue-tsc` para los componentes.
-- **Vite** como servidor de desarrollo y bundler.
+- **TypeScript 7** (compilador nativo _tsgo_) en modo estricto, con `vue-tsc` para los componentes.
+- **Vite** como servidor de desarrollo y bundler, con **Vue DevTools** integradas.
 - **Vitest** para los tests del motor.
+- **Oxlint** y **Oxfmt** para lint y formato.
 - **Bun** como gestor de paquetes.
 - **Canvas 2D API** para todo el renderizado del juego.
 
@@ -167,17 +170,20 @@ Los tests (`tests/game.test.ts`) cubren el motor: colisiones, rotación y _wall 
 │   ├── style.css              # Estilos globales y variables de tema
 │   ├── engine/
 │   │   ├── constants.ts       # Tablas: piezas, colores, puntuación, power-ups
-│   │   └── game.ts            # Motor del juego (clase Game)
+│   │   ├── game.ts            # Motor del juego (clase Game)
+│   │   └── __tests__/
+│   │       └── game.spec.ts   # Tests del motor (Vitest)
 │   ├── render/
 │   │   └── canvas.ts          # Dibujo en canvas y textos flotantes
 │   ├── composables/
 │   │   ├── useGame.ts         # Puente motor ↔ Vue, bucle y teclado
 │   │   └── useTheme.ts        # Tema claro / oscuro
 │   └── components/            # GameBoard, SidePanel, PiecePreview, GameOverlay, ThemeToggle
-├── tests/
-│   └── game.test.ts           # Tests del motor (Vitest)
-├── vite.config.ts
-├── tsconfig.json
+├── env.d.ts
+├── vite.config.ts             # Vite + Vue + Vue DevTools, alias @/
+├── vitest.config.ts
+├── tsconfig.json              # Referencias a tsconfig.app / .node / .vitest
+├── .oxlintrc.json / .oxfmtrc.json
 └── package.json
 ```
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { useGameContext } from '../composables/useGame';
+import { useGameContext } from '../composables/useGame'
 
-const { hud, restart } = useGameContext();
+const { hud, restart } = useGameContext()
 </script>
 
 <template>
@@ -9,7 +9,9 @@ const { hud, restart } = useGameContext();
     <div v-if="hud.paused || hud.gameOver" class="overlay">
       <div class="overlay-box">
         <p class="overlay-title">{{ hud.gameOver ? 'GAME OVER' : 'PAUSA' }}</p>
-        <p v-if="hud.gameOver" class="overlay-score">Puntuación: {{ hud.score.toLocaleString() }}</p>
+        <p v-if="hud.gameOver" class="overlay-score">
+          Puntuación: {{ hud.score.toLocaleString() }}
+        </p>
         <button class="restart-btn" type="button" @click="restart">Reiniciar</button>
       </div>
     </div>
