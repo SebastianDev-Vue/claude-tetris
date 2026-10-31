@@ -1,10 +1,21 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { MODES } from '../engine/challenges'
 import { SKILLS, type SkillId } from '../engine/skills'
 import { useGameContext } from '../composables/useGame'
 
-const { hud, start, restart, openMenu, togglePause, useSkill, closeSkillMenu } = useGameContext()
+const { hud, start, restart, openMenu, togglePause, setStartLevel, useSkill, closeSkillMenu } =
+  useGameContext()
+
+/** Lista de teclas desplegada dentro del menú de pausa. */
+const showControls = ref(false)
+
+/** Aplica el nivel elegido y suelta el foco: las flechas no deben seguir cambiándolo. */
+function pickLevel(e: Event): void {
+  const select = e.target as HTMLSelectElement
+  setStartLevel(Number(select.value))
+  select.blur()
+}
 
 type Screen = 'menu' | 'over' | 'skills' | 'pause' | null
 
@@ -99,7 +110,7 @@ function unavailable(id: SkillId): boolean {
           <p class="overlay-title">PAUSA</p>
           <div class="overlay-actions">
             <button class="restart-btn" type="button" @click="run(togglePause, $event)">
-              Continuar
+              Reanudar
             </button>
             <button class="restart-btn secondary" type="button" @click="run(restart, $event)">
               Reiniciar
@@ -108,6 +119,31 @@ function unavailable(id: SkillId): boolean {
               Menú
             </button>
           </div>
+          <label class="pause-level">
+            Nivel inicial
+            <select class="restart-btn secondary" :value="hud.startLevel" @change="pickLevel">
+              <option v-for="n in 10" :key="n" :value="n">{{ n }}</option>
+            </select>
+          </label>
+          <p class="pause-hint">Se aplica al reiniciar o al empezar otra partida</p>
+          <button
+            class="restart-btn secondary"
+            type="button"
+            :aria-expanded="showControls"
+            @click="run(() => (showControls = !showControls), $event)"
+          >
+            {{ showControls ? 'Ocultar controles' : 'Ver controles' }}
+          </button>
+          <ul v-if="showControls" class="pause-controls">
+            <li><kbd>←</kbd><kbd>→</kbd> mover</li>
+            <li><kbd>↑</kbd><kbd>X</kbd> rotar</li>
+            <li><kbd>↓</kbd> bajar</li>
+            <li><kbd>Space</kbd> caída</li>
+            <li><kbd>C</kbd> hold</li>
+            <li><kbd>E</kbd> habilidades</li>
+            <li><kbd>P</kbd><kbd>Esc</kbd> pausa</li>
+            <li><kbd>M</kbd> sonido: {{ hud.muted ? 'off' : 'on' }}</li>
+          </ul>
         </div>
       </Transition>
     </div>
