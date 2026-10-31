@@ -663,3 +663,101 @@ kbd {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent);
 }
+
+/* ==== Tabla de récords (menú de inicio y game over) ==== */
+
+/* Con la tabla el contenido puede superar el alto del tablero: se desplaza en vez de cortarse */
+.overlay-box {
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 12px 0;
+}
+
+.records {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.records-title {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: var(--accent);
+}
+
+.records-empty,
+.records-best {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.records-table {
+  border-collapse: collapse;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.records-table th {
+  font-weight: 600;
+  color: var(--label);
+  padding: 2px 5px;
+}
+
+.records-table td {
+  padding: 2px 5px;
+  text-align: right;
+}
+
+.records-table .records-name {
+  text-align: left;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.records-table tr.records-new td {
+  color: var(--energy);
+  font-weight: 700;
+  background: color-mix(in srgb, var(--energy) 15%, transparent);
+}
+
+.record-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.record-qualifies,
+.record-new-msg {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--energy);
+}
+
+.record-new-msg {
+  font-size: 16px;
+  animation: win-pulse 1.2s ease-in-out infinite;
+}
+
+.record-input {
+  width: 160px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 14px;
+  text-align: center;
+  color: var(--text);
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  border-radius: 6px;
+}
+
+.record-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}

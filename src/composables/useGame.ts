@@ -5,6 +5,7 @@ import { MODES, formatTime, type GameMode } from '../engine/challenges'
 import { SKILLS, type SkillId } from '../engine/skills'
 import { Effects } from '../render/effects'
 import { Sfx } from '../audio/sfx'
+import { isTypingTarget } from './useTheme'
 
 // Tope del dt por frame: al volver de una pestaña oculta rAF entrega minutos de golpe
 const MAX_FRAME_MS = 100
@@ -20,6 +21,8 @@ export interface Hud {
   gameOver: boolean
   /** Fijados consecutivos con líneas (el panel muestra el multiplicador desde 2). */
   combo: number
+  /** Mejor combo de la partida (tabla de récords). */
+  maxCombo: number
   b2b: boolean
   muted: boolean
   /** Pantalla de selección de modo visible (el juego no avanza). */
@@ -113,6 +116,7 @@ export function useGame(): GameContext {
     paused: false,
     gameOver: false,
     combo: 0,
+    maxCombo: 0,
     b2b: false,
     muted: false,
     menu: true, // la app arranca en la pantalla de selección de modo
@@ -145,6 +149,7 @@ export function useGame(): GameContext {
     hud.paused = game.paused
     hud.gameOver = game.gameOver
     hud.combo = game.combo
+    hud.maxCombo = game.maxCombo
     hud.b2b = game.b2b
     hud.muted = sfx.muted
     hud.mode = game.mode
@@ -226,6 +231,7 @@ export function useGame(): GameContext {
   }
 
   function onKeydown(e: KeyboardEvent): void {
+    if (isTypingTarget(e.target)) return // escribir el nombre del récord no es jugar
     sfx.unlock() // el audio solo puede activarse tras un gesto del usuario
     if (e.code === 'KeyM') {
       sfx.toggleMute()

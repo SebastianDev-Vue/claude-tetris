@@ -11,6 +11,14 @@ export interface ThemeContext {
   toggleRetro: () => void
 }
 
+/** El foco está en un campo de texto: los atajos globales no deben reaccionar al escribir. */
+export function isTypingTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable || target.closest('input, textarea, select') !== null)
+  )
+}
+
 export const ThemeKey: InjectionKey<ThemeContext> = Symbol('theme')
 
 export function useThemeContext(): ThemeContext {
@@ -60,6 +68,7 @@ export function useTheme(): ThemeContext {
   }
 
   function onKeydown(e: KeyboardEvent): void {
+    if (isTypingTarget(e.target)) return
     if (e.code === 'KeyR' && !e.repeat) toggleRetro()
   }
 

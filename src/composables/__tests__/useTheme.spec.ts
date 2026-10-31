@@ -57,6 +57,14 @@ describe('useTheme: modo retro', () => {
     expect(theme.value).toBe('light')
   })
 
+  it('escribir R en un campo de texto no alterna el modo retro', () => {
+    const { retro } = mountTheme()
+    const input = document.body.appendChild(document.createElement('input'))
+    input.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyR', bubbles: true }))
+    input.remove()
+    expect(retro.value).toBe(false)
+  })
+
   it('al desmontar deja de escuchar el teclado (HMR)', () => {
     const { retro } = mountTheme()
     wrapper?.unmount()
