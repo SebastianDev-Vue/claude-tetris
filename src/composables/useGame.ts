@@ -2,6 +2,7 @@ import { inject, markRaw, onMounted, onUnmounted, reactive, type InjectionKey } 
 import { Game } from '../engine/game'
 import { isPowerUp } from '../engine/constants'
 import { Effects } from '../render/effects'
+import { Sfx } from '../audio/sfx'
 
 type FrameListener = (now: number) => void
 
@@ -12,6 +13,10 @@ export interface Hud {
   powerUpInfo: string
   paused: boolean
   gameOver: boolean
+  /** Fijados consecutivos con líneas (el panel muestra el multiplicador desde 2). */
+  combo: number
+  b2b: boolean
+  muted: boolean
 }
 
 export interface GameContext {
@@ -50,9 +55,13 @@ function powerUpLabel(game: Game): string {
  */
 export function useGame(): GameContext {
   const effects = new Effects()
+  const sfx = new Sfx()
   const game = markRaw(
     new Game({
-      onEvent: (e) => effects.handle(e, performance.now()),
+      onEvent: (e) => {
+        effects.handle(e, performance.now())
+        sfx.handle(e)
+      },
     }),
   )
   const hud = reactive<Hud>({
@@ -62,6 +71,9 @@ export function useGame(): GameContext {
     powerUpInfo: '',
     paused: false,
     gameOver: false,
+    combo: 0,
+    b2b: false,
+    muted: false,
   })
   const listeners = new Set<FrameListener>()
   let animId = 0
@@ -75,6 +87,9 @@ export function useGame(): GameContext {
     hud.powerUpInfo = powerUpLabel(game)
     hud.paused = game.paused
     hud.gameOver = game.gameOver
+    hud.combo = game.combo
+    hud.b2b = game.b2b
+    hud.muted = sfx.muted
   }
 
   function frame(now: number): void {
@@ -86,7 +101,11 @@ export function useGame(): GameContext {
   }
 
   function onKeydown(e: KeyboardEvent): void {
+    sfx.unlock() // el audio solo puede activarse tras un gesto del usuario
     switch (e.code) {
+      case 'KeyM':
+        sfx.toggleMute()
+        break
       case 'KeyP':
         game.togglePause()
         break

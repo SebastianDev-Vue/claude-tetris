@@ -161,3 +161,15 @@ export const SPECIAL_NAMES: Readonly<Record<SpecialKind, string>> = {
   challenge: '¡RETO!',
   reward: 'RECOMPENSA',
 }
+
+// Combos y bonificaciones
+export const T_PIECE = 3
+/** Puntos base de un T-spin según las líneas que limpia (0–3), multiplicados por el nivel. */
+export const TSPIN_SCORES = [400, 800, 1200, 1600]
+/** Multiplicador máximo del combo (x2, x3… hasta este valor). */
+export const MAX_COMBO_MULTIPLIER = 10
+/** Bonificación Back-to-Back: Tetris o T-spin con líneas encadenados. */
+export const B2B_MULTIPLIER = 1.5
+export const PERFECT_CLEAR_SCORE = 3000
+
+export const CLEAR_NAMES = ['', 'SINGLE', 'DOUBLE', 'TRIPLE', 'TETRIS']

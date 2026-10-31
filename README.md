@@ -14,6 +14,8 @@ Implementación de **Tetris** con **Vue 3 + TypeScript**, renderizado en HTML5 C
 
 - [Qué hace el proyecto](#qué-hace-el-proyecto)
   - [Power-ups](#power-ups)
+  - [Piezas no estándar](#piezas-no-estándar)
+  - [Combos y bonificaciones](#combos-y-bonificaciones)
 - [Cómo ejecutar el juego](#cómo-ejecutar-el-juego)
 - [Controles](#controles)
 - [Cómo funciona](#cómo-funciona)
@@ -37,7 +39,7 @@ Es una versión jugable de Tetris con todas las mecánicas que esperarías:
 - **Soft drop** (bajada acelerada) y **hard drop** (caída instantánea).
 - **Pieza fantasma** (_ghost piece_): muestra dónde aterrizará la pieza actual.
 - **Vista previa** de la siguiente pieza.
-- **Sistema de puntuación** clásico (100 / 300 / 500 / 800 multiplicado por nivel).
+- **Sistema de puntuación** clásico (100 / 300 / 500 / 800 multiplicado por nivel) con **combos, T-spin, Back-to-Back y perfect clear** (ver abajo).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
 - **Tema claro / oscuro**.
@@ -67,6 +69,24 @@ El panel lateral muestra cuántas líneas faltan para el siguiente power-up y el
 | **Hueca 3×3** | 8 | Como **reto** (4 %): deja un hueco en el centro que solo el single puede tapar limpiamente |
 
 Las piezas especiales brillan con un halo pulsante (también en la vista previa NEXT) y al entrar en juego lanzan chispas; la recompensa suelta estrellas doradas y el reto, ondas de aviso.
+
+### Combos y bonificaciones
+
+Cada jugada que limpia líneas se puntúa así:
+
+```
+puntos = base × nivel × combo × B2B  (+ perfect clear)
+```
+
+| Concepto | Regla |
+| -------- | ----- |
+| **Base** | 100 / 300 / 500 / 800 por 1–4 líneas. Un **T-spin** usa su propia tabla: 400 / 800 / 1200 / 1600 por 0–3 líneas |
+| **Combo** | Limpiar líneas en fijados consecutivos multiplica: x2, x3, x4… (tope x10). Fijar sin limpiar lo reinicia |
+| **T-spin** | Pieza T fijada justo después de rotarla, con al menos 3 de las 4 esquinas de su caja 3×3 ocupadas. Moverse o el soft drop tras rotar lo anulan; la caída normal y el hard drop no. Un T-spin sin líneas también puntúa |
+| **Back-to-Back** | Un Tetris o T-spin con líneas justo después de otro vale **×1,5**. Un clear "fácil" (1–3 líneas sin T-spin) rompe la cadena |
+| **Perfect clear** | Dejar el tablero completamente vacío: **+3000 × nivel** |
+
+Efectos: destello en las filas limpiadas, barrido de chispas, sacudida del tablero (más fuerte en Tetris, T-spin y perfect clear), ondas para el B2B, lluvia de estrellas en el perfect clear y textos flotantes. Cada jugada tiene su **sonido** sintetizado y el tono sube con el combo (`M` para silenciar). El panel muestra el multiplicador de combo con una animación y la insignia **B2B** cuando el siguiente Tetris o T-spin recibirá la bonificación.
 
 ---
 
@@ -99,6 +119,7 @@ bun run preview    # sirve dist/ localmente
 | `↓`       | Soft drop (bajar más rápido)      |
 | `Espacio` | Hard drop (caída instantánea)     |
 | `P`       | Pausar / reanudar                 |
+| `M`       | Activar / silenciar el sonido     |
 
 ---
 
@@ -136,7 +157,7 @@ useGame()
      ├─ GameBoard / PiecePreview dibujan en sus canvas
      └─ requestAnimationFrame(frame)
 
-   lockPiece(): merge → resolvePowerUp → clearLines → spawn
+   lockPiece(): isTSpin → merge → resolvePowerUp → clearLines (puntuación) → spawn
    keydown → mover / rotar / soft-drop / hard-drop / pausa
 ```
 
@@ -156,7 +177,7 @@ bun run format             # Oxfmt (sin punto y coma, comillas simples)
 
 > No uses `bun test`: lanza el test runner propio de Bun en lugar de Vitest.
 
-Los tests (`src/engine/__tests__/game.spec.ts`) cubren el motor: colisiones, rotación y _wall kicks_, caída, pausa, game over, puntuación, niveles, cada power-up y las piezas no estándar. `src/render/__tests__/effects.spec.ts` comprueba la capa de efectos con un contexto de canvas falso. El generador aleatorio se inyecta para que sean deterministas.
+Los tests (`src/engine/__tests__/game.spec.ts`) cubren el motor: colisiones, rotación y _wall kicks_, caída, pausa, game over, puntuación, niveles, cada power-up, las piezas no estándar, combos, T-spin, B2B y perfect clear. `src/render/__tests__/effects.spec.ts` comprueba la capa de efectos con un contexto de canvas falso y `src/audio/__tests__/sfx.spec.ts` el sonido con un `AudioContext` falso. El generador aleatorio se inyecta para que sean deterministas.
 
 ---
 
@@ -186,6 +207,9 @@ Los tests (`src/engine/__tests__/game.spec.ts`) cubren el motor: colisiones, rot
 │   │   ├── game.ts            # Motor del juego (clase Game)
 │   │   └── __tests__/
 │   │       └── game.spec.ts   # Tests del motor (Vitest)
+│   ├── audio/
+│   │   ├── sfx.ts             # Sonidos sintetizados (Web Audio)
+│   │   └── __tests__/
 │   ├── render/
 │   │   ├── canvas.ts          # Dibujo del tablero y vistas previas
 │   │   ├── effects.ts         # Popups, partículas y ondas
@@ -220,6 +244,10 @@ Parámetros fáciles de ajustar en `src/engine/constants.ts`:
 | `FREEZE_MS`             | Duración de Congelar en ms                   | `5000`                |
 | `PENTOMINO_CHANCE`      | Probabilidad de pentominó                    | `0.1`                 |
 | `HOLLOW_CHANCE`         | Probabilidad de la pieza hueca (reto)        | `0.04`                |
+| `TSPIN_SCORES`          | Puntos de un T-spin con 0, 1, 2 o 3 líneas   | `[400,800,1200,1600]` |
+| `MAX_COMBO_MULTIPLIER`  | Tope del multiplicador de combo              | `10`                  |
+| `B2B_MULTIPLIER`        | Bonificación Back-to-Back                    | `1.5`                 |
+| `PERFECT_CLEAR_SCORE`   | Puntos de un perfect clear (× nivel)         | `3000`                |
 
 El tamaño del canvas se calcula a partir de `COLS`, `ROWS` y `BLOCK`, así que no hace falta tocar nada más.
 

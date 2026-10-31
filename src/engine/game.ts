@@ -24,6 +24,12 @@ import {
   TINT,
   WILDCARD,
   WILDCARD_SCORE,
+  B2B_MULTIPLIER,
+  CLEAR_NAMES,
+  MAX_COMBO_MULTIPLIER,
+  PERFECT_CLEAR_SCORE,
+  TSPIN_SCORES,
+  T_PIECE,
   isPowerUp,
   specialKind,
   type SpecialKind,
@@ -49,6 +55,20 @@ export type GameEvent =
   | { type: 'popup'; text: string; color: string }
   /** Ha entrado en juego una pieza especial; `cells` son sus celdas en el tablero. */
   | { type: 'special'; kind: SpecialKind; cells: Cell[]; color: string }
+  /**
+   * Un fijado puntuable: limpió líneas o fue un T-spin. `rows` son los índices de las filas
+   * limpiadas (antes de eliminarlas), `combo` el multiplicador aplicado.
+   */
+  | {
+      type: 'clear'
+      rows: number[]
+      lines: number
+      combo: number
+      tspin: boolean
+      b2b: boolean
+      perfect: boolean
+      points: number
+    }
 
 export interface GameOptions {
   /** Generador aleatorio en [0, 1); inyectable para tests deterministas. */
@@ -105,6 +125,12 @@ export class Game {
   pendingReward = false
   /** Tiempo restante de Congelar; solo baja dentro de update(), así que la pausa lo conserva. */
   frozenMs = 0
+  /** Fijados consecutivos que han limpiado líneas (0 = sin combo). */
+  combo = 0
+  /** El último fijado con líneas fue «difícil» (Tetris o T-spin): el siguiente puede ser B2B. */
+  b2b = false
+  /** El último movimiento de la pieza actual fue una rotación (para detectar T-spin). */
+  lastMoveRotate = false
 
   private readonly random: () => number
   private readonly emit: (event: GameEvent) => void
@@ -129,6 +155,9 @@ export class Game {
     this.pendingPowerUp = false
     this.pendingReward = false
     this.frozenMs = 0
+    this.combo = 0
+    this.b2b = false
+    this.lastMoveRotate = false
     this.next = this.pickNextPiece()
     this.spawn()
   }
@@ -226,14 +255,21 @@ export class Game {
 
   // ---- Input ----
 
+  // Para el T-spin cuenta si el último movimiento fue una rotación: desplazarse o el soft drop
+  // lo anulan; la caída por gravedad y el hard drop no (permiten rotar y dejar caer).
+
   moveLeft(): void {
-    if (this.canAct && !this.collide(this.current.shape, this.current.x - 1, this.current.y))
+    if (this.canAct && !this.collide(this.current.shape, this.current.x - 1, this.current.y)) {
       this.current.x--
+      this.lastMoveRotate = false
+    }
   }
 
   moveRight(): void {
-    if (this.canAct && !this.collide(this.current.shape, this.current.x + 1, this.current.y))
+    if (this.canAct && !this.collide(this.current.shape, this.current.x + 1, this.current.y)) {
       this.current.x++
+      this.lastMoveRotate = false
+    }
   }
 
   rotate(): void {
@@ -243,6 +279,7 @@ export class Game {
       if (!this.collide(rotated, this.current.x + kick, this.current.y)) {
         this.current.shape = rotated
         this.current.x += kick
+        this.lastMoveRotate = true
         return
       }
     }
@@ -253,6 +290,7 @@ export class Game {
     if (!this.collide(this.current.shape, this.current.x, this.current.y + 1)) {
       this.current.y++
       this.score += 1
+      this.lastMoveRotate = false
     } else {
       this.lockPiece()
     }
@@ -271,13 +309,34 @@ export class Game {
     this.paused = !this.paused
   }
 
-  // ---- Fijado: merge → power-ups → líneas → nueva pieza ----
+  // ---- Fijado: (T-spin) → merge → power-ups → líneas → nueva pieza ----
 
   lockPiece(): void {
+    const tspin = this.isTSpin() // antes de merge(): se evalúa sobre el tablero sin la pieza
     this.merge()
     this.resolvePowerUp()
-    this.clearLines()
+    this.clearLines(tspin)
     this.spawn()
+  }
+
+  /**
+   * T-spin por la regla de las 3 esquinas: pieza T, último movimiento una rotación y al menos
+   * 3 de las 4 esquinas de su caja 3×3 ocupadas (o fuera del tablero). Funciona sin SRS porque
+   * transponer+invertir una matriz 3×3 mantiene el centro de la T en (x+1, y+1).
+   */
+  isTSpin(): boolean {
+    const { type, x, y } = this.current
+    if (type !== T_PIECE || !this.lastMoveRotate) return false
+    const corners: [number, number][] = [
+      [y, x],
+      [y, x + 2],
+      [y + 2, x],
+      [y + 2, x + 2],
+    ]
+    const blocked = corners.filter(
+      ([r, c]) => c < 0 || c >= COLS || r >= ROWS || (r >= 0 && this.cell(r, c) !== 0),
+    )
+    return blocked.length >= 3
   }
 
   private merge(): void {
@@ -307,21 +366,38 @@ export class Game {
     this.emit({ type: 'special', kind, cells, color })
   }
 
-  private clearLines(): void {
-    const remaining = this.board.filter((row) => row.some((v) => v === 0))
-    const cleared = ROWS - remaining.length
-    if (!cleared) return
-    this.board = [...Array.from({ length: cleared }, emptyRow), ...remaining]
+  /**
+   * Elimina filas completas y puntúa:
+   * base (tabla normal o de T-spin) × nivel × combo × B2B (+ perfect clear).
+   */
+  private clearLines(tspin: boolean): void {
+    const rows: number[] = []
+    this.board.forEach((row, r) => {
+      if (row.every((v) => v !== 0)) rows.push(r)
+    })
+    const cleared = rows.length
 
+    if (!cleared) {
+      this.combo = 0 // fijar sin limpiar rompe el combo (el B2B se conserva)
+      if (tspin) this.scoreClear(rows, tspin) // T-spin sin líneas también puntúa
+      return
+    }
+
+    this.board = [
+      ...Array.from({ length: cleared }, emptyRow),
+      ...this.board.filter((_, r) => !rows.includes(r)),
+    ]
     this.lines += cleared
-    this.score += (LINE_SCORES[cleared] ?? 0) * this.level
-    if (cleared >= 4) this.pendingReward = true
-    // Los comodines que queden se eliminan con cualquier limpieza de líneas
+    this.combo++
+    // Los comodines que queden se eliminan con cualquier limpieza de líneas (antes de
+    // puntuar, para que cuenten en un posible perfect clear)
     const wild = this.removeWildcards()
+    this.scoreClear(rows, tspin)
     if (wild) {
       this.score += wild * WILDCARD_SCORE * this.level
-      this.popup(`COMODINES +${wild}`, WILDCARD)
+      this.popup(`COMODINES +${wild}`, COLORS[WILDCARD])
     }
+    if (cleared >= 4) this.pendingReward = true
     this.level = Math.floor(this.lines / 10) + 1
     this.dropInterval = Math.max(100, INITIAL_DROP_INTERVAL - (this.level - 1) * 90)
     this.linesToPowerUp -= cleared
@@ -329,6 +405,29 @@ export class Game {
       this.linesToPowerUp += LINES_PER_POWERUP
       this.pendingPowerUp = true
     }
+  }
+
+  /** Puntúa un fijado con líneas o T-spin, actualiza el B2B y emite popups + evento 'clear'. */
+  private scoreClear(rows: number[], tspin: boolean): void {
+    const lines = rows.length
+    const base = (tspin ? TSPIN_SCORES[lines] : LINE_SCORES[lines]) ?? 0
+    // «Difícil» = Tetris o T-spin con líneas. Un clear fácil rompe la cadena B2B.
+    const difficult = lines > 0 && (lines >= 4 || tspin)
+    const b2b = difficult && this.b2b
+    if (lines > 0) this.b2b = difficult
+    const comboMult = Math.min(Math.max(this.combo, 1), MAX_COMBO_MULTIPLIER)
+    const perfect = lines > 0 && this.board.every((row) => row.every((v) => v === 0))
+    const points =
+      Math.round(base * this.level * comboMult * (b2b ? B2B_MULTIPLIER : 1)) +
+      (perfect ? PERFECT_CLEAR_SCORE * this.level : 0)
+    this.score += points
+
+    if (tspin) this.popup(`T-SPIN ${CLEAR_NAMES[lines] ?? ''}`.trim(), COLORS[T_PIECE])
+    else if (lines >= 4) this.popup('TETRIS', COLORS[1])
+    if (b2b) this.popup('BACK-TO-BACK', '#ffab40')
+    if (comboMult >= 2) this.popup(`COMBO x${comboMult}`, '#ff8a80')
+    if (perfect) this.popup('PERFECT CLEAR', '#ffffff')
+    this.emit({ type: 'clear', rows, lines, combo: comboMult, tspin, b2b, perfect, points })
   }
 
   private removeWildcards(): number {
@@ -352,7 +451,7 @@ export class Game {
       if (!isPowerUp(value)) return
       this.setCell(y + r, x + c, 0)
       this.applyPowerUp(value, x + c, y + r)
-      this.popup(POWER_NAMES[value] ?? '', value)
+      this.popup(POWER_NAMES[value] ?? '', COLORS[value])
     })
   }
 
@@ -408,7 +507,7 @@ export class Game {
     return best
   }
 
-  private popup(text: string, colorIndex: number): void {
-    this.emit({ type: 'popup', text, color: COLORS[colorIndex] ?? '#fff' })
+  private popup(text: string, color: string | null | undefined): void {
+    this.emit({ type: 'popup', text, color: color ?? '#fff' })
   }
 }

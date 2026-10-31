@@ -17,6 +17,9 @@
   --btn-text: #0f0f17;
   --btn-hover: #9bbdff;
   --grid: #22222e;
+  --combo: #ff8a80;
+  --combo-glow: rgba(255, 138, 128, 0.5);
+  --b2b: #ffab40;
 }
 
 :root[data-theme='light'] {
@@ -38,6 +41,9 @@
   --btn-text: #ffffff;
   --btn-hover: #5873c0;
   --grid: #e3e5ef;
+  --combo: #d84315;
+  --combo-glow: rgba(216, 67, 21, 0.25);
+  --b2b: #ef6c00;
 }
 
 *,
@@ -129,6 +135,67 @@ body {
   font-size: 15px;
   font-weight: 700;
   color: var(--accent);
+}
+
+/* Dos secciones en la misma fila (LINES + LEVEL) */
+.panel-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* ---- Combo ---- */
+.combo-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+}
+
+.value.combo {
+  display: inline-block;
+  color: var(--muted);
+}
+
+.value.combo.active {
+  color: var(--combo);
+  text-shadow: 0 0 12px var(--combo-glow);
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--btn-text);
+  background: var(--b2b);
+  box-shadow: 0 0 10px var(--b2b);
+}
+
+/* Animación "pop": entra grande y se asienta; sale desvaneciéndose */
+.pop-enter-active {
+  animation: pop-in 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.pop-leave-active {
+  transition: opacity 0.1s ease;
+}
+
+.pop-leave-to {
+  opacity: 0;
+}
+
+@keyframes pop-in {
+  from {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .preview {

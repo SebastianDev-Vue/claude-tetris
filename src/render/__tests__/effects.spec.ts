@@ -65,3 +65,52 @@ describe('Effects', () => {
     expect(drawCount()).toBe(0)
   })
 })
+
+describe('Effects: limpieza de líneas', () => {
+  const clear = (
+    overrides: Partial<{ lines: number; perfect: boolean; tspin: boolean; combo: number }> = {},
+  ) => ({
+    type: 'clear' as const,
+    rows: [18, 19],
+    lines: 2,
+    combo: 1,
+    tspin: false,
+    b2b: false,
+    perfect: false,
+    points: 300,
+    ...overrides,
+  })
+
+  it('un Tetris sacude el tablero y la sacudida se apaga', () => {
+    const fx = new Effects()
+    fx.handle(clear({ lines: 4 }), 0)
+    const early = fx.offset(10)
+    expect(Math.abs(early.x) + Math.abs(early.y)).toBeGreaterThan(0)
+    expect(fx.offset(1000)).toEqual({ x: 0, y: 0 })
+  })
+
+  it('un clear simple sin combo no sacude', () => {
+    const fx = new Effects()
+    fx.handle(clear(), 0)
+    expect(fx.offset(10)).toEqual({ x: 0, y: 0 })
+  })
+
+  it('dibuja un destello por fila limpiada que desaparece', () => {
+    const fx = new Effects()
+    fx.handle(clear({ perfect: true }), 0)
+    const early = fakeContext()
+    fx.draw(early.ctx, 16)
+    expect(early.drawCount()).toBeGreaterThan(0)
+    for (let t = 32; t < 3000; t += 16) fx.draw(fakeContext().ctx, t)
+    const late = fakeContext()
+    fx.draw(late.ctx, 3000)
+    expect(late.drawCount()).toBe(0)
+  })
+
+  it('clear() también detiene la sacudida', () => {
+    const fx = new Effects()
+    fx.handle(clear({ perfect: true }), 0)
+    fx.clear()
+    expect(fx.offset(10)).toEqual({ x: 0, y: 0 })
+  })
+})

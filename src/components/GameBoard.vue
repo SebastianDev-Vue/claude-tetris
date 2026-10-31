@@ -13,8 +13,14 @@ let off: (() => void) | undefined
 onMounted(() => {
   const ctx = canvas.value!.getContext('2d')!
   off = onFrame((now) => {
+    // Limpiar sin transformación y luego desplazar todo el frame según la sacudida
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
+    const shake = effects.offset(now)
+    ctx.setTransform(1, 0, 0, 1, shake.x, shake.y)
     drawBoard(ctx, game, props.gridColor, now)
     effects.draw(ctx, now)
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
   })
 })
 

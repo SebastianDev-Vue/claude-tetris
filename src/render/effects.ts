@@ -1,4 +1,4 @@
-import { BLOCK } from '../engine/constants'
+import { BLOCK, COLORS, COLS, ROWS, T_PIECE } from '../engine/constants'
 import type { Cell, GameEvent } from '../engine/game'
 
 type Ctx = CanvasRenderingContext2D
@@ -175,11 +175,82 @@ function drawStar(ctx: Ctx, x: number, y: number, r: number, angle: number): voi
   ctx.fill()
 }
 
+// ---- Destellos de filas y sacudida ----
+
+interface Flash {
+  row: number
+  born: number
+  color: string
+}
+
+const FLASH_MS = 280
+
+class FlashLayer {
+  private items: Flash[] = []
+
+  add(row: number, color: string, now: number): void {
+    this.items.push({ row, born: now, color })
+  }
+
+  clear(): void {
+    this.items = []
+  }
+
+  draw(ctx: Ctx, now: number): void {
+    this.items = this.items.filter((f) => now - f.born < FLASH_MS)
+    if (!this.items.length) return
+    ctx.save()
+    for (const f of this.items) {
+      const t = (now - f.born) / FLASH_MS
+      ctx.globalAlpha = (1 - t) * 0.85
+      ctx.fillStyle = f.color
+      // la banda se estrecha verticalmente mientras se apaga
+      const h = BLOCK * (1 - t * 0.6)
+      ctx.fillRect(0, f.row * BLOCK + (BLOCK - h) / 2, COLS * BLOCK, h)
+    }
+    ctx.restore()
+  }
+}
+
+/** Sacudida del tablero que decae linealmente. */
+class Shake {
+  private intensity = 0
+  private born = 0
+  private duration = 0
+
+  constructor(private readonly random: () => number = Math.random) {}
+
+  start(intensity: number, now: number, duration = 320): void {
+    // una sacudida más fuerte sustituye a la que esté en curso
+    if (intensity < this.current(now)) return
+    this.intensity = intensity
+    this.born = now
+    this.duration = duration
+  }
+
+  private current(now: number): number {
+    const t = (now - this.born) / this.duration
+    return t >= 1 || t < 0 ? 0 : this.intensity * (1 - t)
+  }
+
+  offset(now: number): { x: number; y: number } {
+    const a = this.current(now)
+    if (!a) return { x: 0, y: 0 }
+    return { x: (this.random() * 2 - 1) * a, y: (this.random() * 2 - 1) * a }
+  }
+
+  clear(): void {
+    this.intensity = 0
+  }
+}
+
 // ---- Fachada: traduce eventos del motor a efectos ----
 
 export class Effects {
   readonly popups = new PopupLayer()
   readonly particles = new ParticleLayer()
+  private readonly flashes = new FlashLayer()
+  private readonly shake = new Shake()
 
   handle(event: GameEvent, now: number): void {
     switch (event.type) {
@@ -201,15 +272,68 @@ export class Effects {
         }
         break
       }
+      case 'clear':
+        this.handleClear(event, now)
+        break
     }
+  }
+
+  private handleClear(event: Extract<GameEvent, { type: 'clear' }>, now: number): void {
+    const color = event.perfect
+      ? '#fff59d'
+      : event.tspin
+        ? (COLORS[T_PIECE] ?? '#fff')
+        : event.lines >= 4
+          ? (COLORS[1] ?? '#fff')
+          : '#ffffff'
+
+    // destello + barrido de chispas a lo largo de cada fila limpiada
+    for (const row of event.rows) {
+      this.flashes.add(row, color, now)
+      for (let c = 0; c < COLS; c++)
+        this.particles.burst((c + 0.5) * BLOCK, (row + 0.5) * BLOCK, color, 2, { speed: 0.1 })
+    }
+
+    // sacudida proporcional a la jugada
+    const intensity = event.perfect
+      ? 9
+      : event.lines >= 4
+        ? 6
+        : event.tspin
+          ? 5
+          : event.combo >= 3
+            ? 2 + Math.min(event.combo, 6) * 0.5
+            : 0
+    if (intensity) this.shake.start(intensity, now)
+
+    const cx = (COLS * BLOCK) / 2
+    const cy = (ROWS * BLOCK) / 2
+    if (event.b2b) this.particles.ring(cx, cy, '#ffab40', now, BLOCK * 5, 700)
+    if (event.perfect) {
+      this.particles.ring(cx, cy, '#ffffff', now, BLOCK * 8, 900)
+      this.particles.ring(cx, cy, '#fff59d', now + 200, BLOCK * 6, 800)
+      for (let i = 0; i < 6; i++)
+        this.particles.burst(cx, cy - BLOCK * 3 + i * BLOCK, '#fff59d', 6, {
+          star: true,
+          speed: 0.2,
+        })
+    }
+  }
+
+  /** Desplazamiento a aplicar al tablero en este frame (sacudida). */
+  offset(now: number): { x: number; y: number } {
+    return this.shake.offset(now)
   }
 
   clear(): void {
     this.popups.clear()
     this.particles.clear()
+    this.flashes.clear()
+    this.shake.clear()
   }
 
   draw(ctx: Ctx, now: number): void {
+    this.flashes.draw(ctx, now)
     this.particles.draw(ctx, now)
     this.popups.draw(ctx, now)
   }
