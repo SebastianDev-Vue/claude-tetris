@@ -25,5 +25,5 @@ All game logic lives in `game.js` as one flat, global script (no modules, no exp
 
 ## Gotchas
 
-- When game over happens via natural drop (piece locks → `spawn()` → `endGame()` from inside `loop()`), `loop()` still schedules another `requestAnimationFrame` call afterward — it doesn't stop until a subsequent frame notices `animId` was cancelled, so there's a brief overlap where the loop keeps ticking behind the overlay. Game over triggered from a keypress path (e.g. hard drop) doesn't have this overlap.
+- When game over happens via natural drop (piece locks → `spawn()` → `endGame()` from inside `loop()`), `endGame()`'s `cancelAnimationFrame(animId)` is a no-op because `animId` is the frame already executing. `loop()` must therefore check `gameOver` itself and not schedule another frame — otherwise the loop runs forever behind the overlay, merging and spawning pieces. `loop()` also returns early if `gameOver || paused` as a guard against stray queued frames.
 - All user-facing text (overlay, HTML labels, README) is in Spanish — match that for any new UI strings.

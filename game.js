@@ -244,6 +244,8 @@ function togglePause() {
 }
 
 function loop(ts) {
+  // Un frame ya encolado no debe avanzar el juego tras game over o pausa
+  if (gameOver || paused) return;
   const dt = ts - lastTime;
   lastTime = ts;
   dropAccum += dt;
@@ -256,6 +258,9 @@ function loop(ts) {
     }
   }
   draw();
+  // Si lockPiece() terminó el juego, endGame() canceló el frame actual (ya en
+  // ejecución, sin efecto); no hay que encolar otro o el loop sigue para siempre.
+  if (gameOver) return;
   animId = requestAnimationFrame(loop);
 }
 
