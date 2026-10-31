@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { Game, type GameEvent } from '@/engine/game'
-import { COLS, FREEZE, isPowerUp } from '@/engine/constants'
-import { MAX_ENERGY, QUEUE_SIZE } from '@/engine/skills'
+import { COLS, FREEZE, PLUS, isPowerUp } from '@/engine/constants'
+import { MAX_ENERGY, PEEK_PIECES, QUEUE_SIZE } from '@/engine/skills'
 
 function newGame(events: GameEvent[] = []) {
   return new Game({ random: () => 0.5, onEvent: (e) => events.push(e) })
@@ -18,7 +18,7 @@ describe('hold', () => {
     expect(g.hold?.type).toBe(current)
     expect(g.current).toBe(next)
     expect(g.queue).toHaveLength(QUEUE_SIZE)
-    expect(events).toContainEqual({ type: 'hold' })
+    expect(events).toContainEqual({ type: 'hold', ok: true })
   })
 
   it('con algo guardado lo intercambia; ambas piezas vuelven a su forma de salida', () => {
@@ -117,11 +117,69 @@ describe('Hold extra (habilidad 5)', () => {
     g.holdPiece() // HOLD = O
     g.hardDrop()
     g.holdPiece() // HOLD pasa a tener la pieza que entró; juega la O
+    const heldBeforeLock = g.hold?.type
     g.hardDrop()
     g.energy = MAX_ENERGY
     expect(g.useSkill('undo')).toBe(true)
     expect(g.current.type).toBe(2)
-    expect(g.hold?.type).not.toBe(2)
+    expect(heldBeforeLock).toBeDefined()
+    expect(g.hold?.type).toBe(heldBeforeLock) // exactamente lo que había en HOLD
     expect(g.holdUsed).toBe(false)
+  })
+})
+
+describe('hold: casos límite', () => {
+  /** Llena las dos filas de arriba: ninguna pieza cabe en su posición de salida. */
+  function blockSpawn(g: Game): void {
+    g.current.y = 10
+    g.board[0] = Array.from({ length: COLS }, () => 5)
+    g.board[1] = Array.from({ length: COLS }, () => 5)
+  }
+
+  it('una pieza especial que entra desde HOLD se anuncia', () => {
+    const events: GameEvent[] = []
+    const g = newGame(events)
+    g.next = g.makePiece(PLUS)
+    g.holdPiece()
+    expect(g.current.type).toBe(PLUS)
+    expect(events).toContainEqual(expect.objectContaining({ type: 'special', kind: 'pentomino' }))
+  })
+
+  it('sacar una pieza de la cola con HOLD descuenta «Ver piezas»', () => {
+    const g = newGame()
+    g.energy = MAX_ENERGY
+    g.useSkill('peek')
+    g.holdPiece()
+    expect(g.peekPieces).toBe(PEEK_PIECES - 1)
+  })
+
+  it('intercambiar con la pieza guardada no descuenta «Ver piezas»', () => {
+    const g = newGame()
+    g.holdPiece()
+    g.hardDrop()
+    g.energy = MAX_ENERGY
+    g.useSkill('peek')
+    g.holdPiece() // el slot ya tenía pieza: no sale nada de la cola
+    expect(g.peekPieces).toBe(PEEK_PIECES)
+  })
+
+  it('un hold rechazado avisa con popup y evento ok: false', () => {
+    const events: GameEvent[] = []
+    const g = newGame(events)
+    blockSpawn(g)
+    expect(g.holdPiece()).toBe(false)
+    expect(events).toContainEqual({ type: 'hold', ok: false })
+    expect(events).toContainEqual(expect.objectContaining({ type: 'popup', text: 'NO DISPONIBLE' }))
+  })
+
+  it('Hold extra no gasta energía si la pieza guardada no cabría', () => {
+    const g = newGame()
+    g.holdPiece()
+    blockSpawn(g)
+    expect(g.holdFits).toBe(false)
+    g.energy = MAX_ENERGY
+    expect(g.useSkill('hold')).toBe(false)
+    expect(g.energy).toBe(MAX_ENERGY)
+    expect(g.holdUsed).toBe(true)
   })
 })

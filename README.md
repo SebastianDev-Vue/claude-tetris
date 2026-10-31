@@ -123,7 +123,7 @@ Cada línea limpiada carga **+10** de energía, y un Tetris o un T-spin con lín
 
 ### Hold
 
-Pulsa **`C`** o **`Shift`** para guardar la pieza actual en el slot **HOLD** (panel izquierdo). Si ya había una guardada, se intercambian. Las piezas salen siempre desde arriba y con su orientación inicial. Solo puede usarse **una vez por turno**: el slot se atenúa hasta que se fija la pieza. Los power-ups también se pueden guardar.
+Pulsa **`C`** para guardar la pieza actual en el slot **HOLD** (panel izquierdo). Si ya había una guardada, se intercambian. Las piezas salen siempre desde arriba y con su orientación inicial. Solo puede usarse **una vez por turno**: el slot se atenúa hasta que se fija la pieza. Los power-ups también se pueden guardar. Si la pieza que entraría no cabe, el hold se rechaza con el aviso «NO DISPONIBLE». (No se usa `Shift`: en Windows, pulsarlo 5 veces seguidas abre el aviso de «Teclas especiales».)
 
 ---
 
@@ -155,7 +155,7 @@ bun run preview    # sirve dist/ localmente
 | `↑` o `X` | Rotar la pieza en sentido horario |
 | `↓`       | Soft drop (bajar más rápido)      |
 | `Espacio` | Hard drop (caída instantánea)     |
-| `C` o `Shift` | Hold: guardar o intercambiar la pieza |
+| `C`       | Hold: guardar o intercambiar la pieza |
 | `M`       | Activar / silenciar el sonido     |
 | `P` o `Esc` | Pausa (con opciones Continuar / Reiniciar / Menú) |
 | `1`–`6`   | Elegir modo en el menú            |

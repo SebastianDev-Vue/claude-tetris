@@ -67,7 +67,8 @@ export class Sfx {
         else this.tone(note(-15), 0, 0.12, 'square', 0.25) // zumbido de error
         break
       case 'hold':
-        this.sweep(note(C5 + 12), note(C5), 0.12, 'triangle') // «whoosh» descendente
+        if (event.ok) this.sweep(note(C5 + 12), note(C5), 0.12, 'triangle') // «whoosh» descendente
+        else this.tone(note(-15), 0, 0.12, 'square', 0.25) // zumbido de error
         break
       case 'energy-full':
         this.arpeggio([C5 + 12, C5 + 19, C5 + 24], 0.05, 'sine')

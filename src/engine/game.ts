@@ -93,8 +93,8 @@ export type GameEvent =
   | { type: 'skill'; id: SkillId; ok: boolean }
   /** La barra de energía acaba de llenarse. */
   | { type: 'energy-full' }
-  /** La pieza actual ha ido al slot HOLD (o se ha intercambiado con él). */
-  | { type: 'hold' }
+  /** HOLD pedido: `ok` si la pieza fue al slot (o se intercambió), `false` si se rechazó. */
+  | { type: 'hold'; ok: boolean }
 
 export interface GameOptions {
   /** Generador aleatorio en [0, 1); inyectable para tests deterministas. */
@@ -493,12 +493,14 @@ export class Game {
     this.lockPiece(dropPoints)
   }
 
-  /** HOLD (teclas C / Shift): una vez por turno. Devuelve si se pudo. */
+  /** HOLD (tecla C): una vez por turno. Devuelve si se pudo; si no, lo avisa. */
   holdPiece(): boolean {
-    if (!this.canAct || this.holdUsed || !this.swapHold()) return false
-    this.holdUsed = true
-    this.emit({ type: 'hold' })
-    return true
+    if (!this.canAct) return false
+    const ok = !this.holdUsed && this.swapHold()
+    if (ok) this.holdUsed = true
+    else this.popup('NO DISPONIBLE', '#9e9e9e')
+    this.emit({ type: 'hold', ok })
+    return ok
   }
 
   togglePause(): void {
@@ -727,8 +729,8 @@ export class Game {
       case 'undo':
         return this.undo()
       case 'hold':
-        // Hold extra: libera HOLD para un segundo uso en este turno
-        if (!this.holdUsed) return false
+        // Hold extra: libera HOLD para un segundo uso en este turno (solo si ese uso cabría)
+        if (!this.holdUsed || !this.holdFits) return false
         this.holdUsed = false
         return true
     }
@@ -772,21 +774,35 @@ export class Game {
    * si no, se intercambia con la guardada. Las piezas vuelven a su forma de salida.
    */
   private swapHold(): boolean {
-    const incoming = this.hold ? this.makePiece(this.hold.type) : this.next
-    if (this.collide(incoming.shape, incoming.x, incoming.y)) return false
-    if (!this.hold) {
+    const fromQueue = !this.hold
+    const outgoing = this.makePiece(this.current.type)
+    if (!this.replaceCurrent(this.holdIncoming())) return false
+    this.hold = outgoing
+    if (fromQueue) {
+      // la pieza salió de la cola: cuenta como una pieza más, igual que en spawn()
       this.queue.shift()
       this.fillQueue()
+      if (this.peekPieces > 0) this.peekPieces--
     }
-    this.hold = this.makePiece(this.current.type)
-    this.setCurrent(incoming)
     return true
   }
 
-  /** Cambia la pieza en juego si cabe en su posición de salida. */
+  /** Pieza que entraría en juego con HOLD: la guardada o, con el slot vacío, la siguiente. */
+  private holdIncoming(): Piece {
+    return this.hold ? this.makePiece(this.hold.type) : this.next
+  }
+
+  /** La pieza que entraría con HOLD cabe en su posición de salida. */
+  get holdFits(): boolean {
+    const p = this.holdIncoming()
+    return !this.collide(p.shape, p.x, p.y)
+  }
+
+  /** Cambia la pieza en juego si cabe en su posición de salida (y la anuncia si es especial). */
   private replaceCurrent(piece: Piece): boolean {
     if (this.collide(piece.shape, piece.x, piece.y)) return false
     this.setCurrent(piece)
+    this.announceSpecial()
     return true
   }
 

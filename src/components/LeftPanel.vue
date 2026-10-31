@@ -33,7 +33,7 @@ const { game, hud } = useGameContext()
         <li><kbd>↑</kbd> rotar</li>
         <li><kbd>↓</kbd> bajar</li>
         <li><kbd>Space</kbd> caída</li>
-        <li><kbd>C</kbd>/<kbd>Shift</kbd> hold</li>
+        <li><kbd>C</kbd> hold</li>
         <li><kbd>E</kbd> habilidades</li>
         <li><kbd>P</kbd> pausa</li>
         <li><kbd>M</kbd> sonido: {{ hud.muted ? 'off' : 'on' }}</li>

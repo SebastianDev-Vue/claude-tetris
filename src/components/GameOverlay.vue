@@ -24,7 +24,7 @@ function run(action: () => void, e: MouseEvent): void {
 
 /** Habilidades que ahora mismo no harían nada (no gastan energía, pero se atenúan). */
 function unavailable(id: SkillId): boolean {
-  return (id === 'undo' && !hud.canUndo) || (id === 'hold' && !hud.holdUsed)
+  return (id === 'undo' && !hud.canUndo) || (id === 'hold' && (!hud.holdUsed || !hud.holdFits))
 }
 </script>
 

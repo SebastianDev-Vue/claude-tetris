@@ -40,6 +40,8 @@ export interface Hud {
   frozen: boolean
   /** HOLD ya usado en este turno (el slot se atenúa). */
   holdUsed: boolean
+  /** La pieza que entraría con HOLD cabe (si no, Hold extra no serviría de nada). */
+  holdFits: boolean
   canUndo: boolean
   /** Tiempo de juego formateado (m:ss). */
   time: string
@@ -124,6 +126,7 @@ export function useGame(): GameContext {
     slowed: false,
     frozen: false,
     holdUsed: false,
+    holdFits: true,
     canUndo: false,
   })
   const listeners = new Set<FrameListener>()
@@ -153,6 +156,7 @@ export function useGame(): GameContext {
     hud.slowed = game.slowMs > 0
     hud.frozen = game.frozenMs > 0
     hud.holdUsed = game.holdUsed
+    hud.holdFits = game.holdFits
     hud.canUndo = game.canUndo
   }
 
@@ -228,9 +232,7 @@ export function useGame(): GameContext {
     if (hud.skillMenu) return onSkillKey(e)
     switch (e.code) {
       case 'KeyC':
-      case 'ShiftLeft':
-      case 'ShiftRight':
-        game.holdPiece()
+        if (!e.repeat) game.holdPiece() // mantener C pulsada no debe guardar cada pieza nueva
         break
       case 'KeyE':
         openSkillMenu()
