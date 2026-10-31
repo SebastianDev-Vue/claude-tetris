@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { MODES } from '../engine/challenges'
+import { SKILLS, type SkillId } from '../engine/skills'
 import { useGameContext } from '../composables/useGame'
 
-const { hud, start, restart, openMenu, togglePause } = useGameContext()
+const { hud, start, restart, openMenu, togglePause, useSkill, closeSkillMenu } = useGameContext()
 
-type Screen = 'menu' | 'over' | 'pause' | null
+type Screen = 'menu' | 'over' | 'skills' | 'pause' | null
 
 const screen = computed<Screen>(() => {
   if (hud.menu) return 'menu'
   if (hud.gameOver) return 'over'
+  if (hud.skillMenu) return 'skills'
   if (hud.paused) return 'pause'
   return null
 })
@@ -18,6 +20,11 @@ const screen = computed<Screen>(() => {
 function run(action: () => void, e: MouseEvent): void {
   ;(e.currentTarget as HTMLButtonElement).blur()
   action()
+}
+
+/** Habilidades que ahora mismo no harían nada (no gastan energía, pero se atenúan). */
+function unavailable(id: SkillId): boolean {
+  return id === 'undo' && !hud.canUndo
 }
 </script>
 
@@ -59,6 +66,32 @@ function run(action: () => void, e: MouseEvent): void {
               Menú
             </button>
           </div>
+        </div>
+
+        <!-- Habilidades (barra de energía llena) -->
+        <div v-else-if="screen === 'skills'" key="skills" class="overlay-box">
+          <p class="overlay-title overlay-title--energy">HABILIDADES</p>
+          <ul class="mode-list">
+            <li v-for="(skill, i) in SKILLS" :key="skill.id">
+              <button
+                class="mode-btn skill-btn"
+                :class="{ unavailable: unavailable(skill.id) }"
+                :style="{ '--skill': skill.color }"
+                type="button"
+                @click="run(() => useSkill(skill.id), $event)"
+              >
+                <kbd>{{ i + 1 }}</kbd>
+                <span class="skill-icon">{{ skill.icon }}</span>
+                <span class="mode-text">
+                  <span class="mode-name">{{ skill.name }}</span>
+                  <span class="mode-desc">{{ skill.description }}</span>
+                </span>
+              </button>
+            </li>
+          </ul>
+          <button class="restart-btn secondary" type="button" @click="run(closeSkillMenu, $event)">
+            Cancelar (Esc)
+          </button>
         </div>
 
         <!-- Pausa -->

@@ -62,6 +62,13 @@ export class Sfx {
           )
         else this.arpeggio([C5 + 7, C5 + 3, C5, C5 - 5], 0.16, 'triangle')
         break
+      case 'skill':
+        if (event.ok) this.sweep(note(C5), note(C5 + 24), 0.3, 'sine')
+        else this.tone(note(-15), 0, 0.12, 'square', 0.25) // zumbido de error
+        break
+      case 'energy-full':
+        this.arpeggio([C5 + 12, C5 + 19, C5 + 24], 0.05, 'sine')
+        break
     }
   }
 

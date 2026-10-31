@@ -22,6 +22,7 @@
   --b2b: #ffab40;
   --win: #81c784;
   --menu-bg: rgba(10, 10, 20, 0.9);
+  --energy: #ffd54f;
 }
 
 :root[data-theme='light'] {
@@ -48,6 +49,7 @@
   --b2b: #ef6c00;
   --win: #2e7d32;
   --menu-bg: rgba(240, 242, 250, 0.94);
+  --energy: #f9a825;
 }
 
 *,
@@ -439,4 +441,92 @@ kbd {
 
 #theme-toggle:hover {
   border-color: var(--accent);
+}
+
+/* ---- Energía y habilidades ---- */
+.energy-bar {
+  position: relative;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--canvas-bg);
+  border: 1px solid var(--canvas-border);
+  overflow: hidden;
+}
+
+.energy-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ffb74d, var(--energy));
+  transition: width 0.35s ease;
+}
+
+.energy-bar.full {
+  border-color: var(--energy);
+  animation: energy-pulse 1s ease-in-out infinite;
+}
+
+/* Brillo que recorre la barra llena */
+.energy-bar.full .energy-fill {
+  background: linear-gradient(90deg, var(--energy), #fff59d, var(--energy));
+  background-size: 200% 100%;
+  animation: energy-shine 1.4s linear infinite;
+}
+
+@keyframes energy-pulse {
+  50% {
+    box-shadow: 0 0 12px var(--energy);
+  }
+}
+
+@keyframes energy-shine {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.energy-hint {
+  font-size: 12px;
+}
+
+.overlay-title--energy {
+  color: var(--energy);
+  text-shadow: 0 0 14px var(--energy);
+}
+
+.skill-btn:hover,
+.skill-btn:focus-visible {
+  border-color: var(--skill);
+  box-shadow: 0 0 14px var(--skill);
+}
+
+.skill-btn.unavailable {
+  opacity: 0.45;
+}
+
+.skill-icon {
+  font-size: 20px;
+  width: 24px;
+  text-align: center;
+}
+
+.queue-strip {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+/* Tinte del tablero con efectos de tiempo activos */
+#board {
+  transition:
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
+}
+
+#board.board--slow {
+  border-color: #81c784;
+  box-shadow: 0 0 22px rgba(129, 199, 132, 0.55);
+}
+
+#board.board--frozen {
+  border-color: #b3e5fc;
+  box-shadow: 0 0 22px rgba(179, 229, 252, 0.7);
 }

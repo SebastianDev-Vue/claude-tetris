@@ -37,6 +37,17 @@ import {
   type SpecialKind,
 } from './constants'
 import { REVERSE_FROM_LEVEL, challengeFor, type Challenge, type GameMode } from './challenges'
+import {
+  ENERGY_BONUS,
+  ENERGY_PER_LINE,
+  MAX_ENERGY,
+  PEEK_PIECES,
+  QUEUE_SIZE,
+  SLOW_FACTOR,
+  SLOW_MS,
+  skillInfo,
+  type SkillId,
+} from './skills'
 
 export type Board = number[][]
 export type Shape = number[][]
@@ -78,6 +89,10 @@ export type GameEvent =
   | { type: 'garbage' }
   /** La partida terminó: `won` si se cumplió el objetivo del desafío. */
   | { type: 'finish'; won: boolean }
+  /** Se ha usado una habilidad (`ok: false` si no se pudo y no gastó energía). */
+  | { type: 'skill'; id: SkillId; ok: boolean }
+  /** La barra de energía acaba de llenarse. */
+  | { type: 'energy-full' }
 
 export interface GameOptions {
   /** Generador aleatorio en [0, 1); inyectable para tests deterministas. */
@@ -122,10 +137,30 @@ const KICKS = [0, -1, 1, -2, 2]
  * Estado y reglas del juego, sin DOM ni temporizadores: quien lo usa llama a update(dt)
  * en cada frame y a los métodos de input. Todo el estado se reinicia en reset().
  */
+/** Estado que «Deshacer» restaura: se guarda justo antes de cada fijado. */
+interface Snapshot {
+  board: Board
+  score: number
+  lines: number
+  level: number
+  dropInterval: number
+  combo: number
+  b2b: boolean
+  linesToPowerUp: number
+  pendingPowerUp: boolean
+  pendingReward: boolean
+  queue: Piece[]
+  pieceType: number
+  hold: Piece | null
+}
+
+const clonePiece = (p: Piece): Piece => ({ ...p, shape: p.shape.map((row) => [...row]) })
+
 export class Game {
   board!: Board
   current!: Piece
-  next!: Piece
+  /** Próximas piezas; la primera es la siguiente («next»). */
+  queue: Piece[] = []
   score = 0
   lines = 0
   level = 1
@@ -156,6 +191,16 @@ export class Game {
   result: 'won' | 'lost' | null = null
   endReason = ''
 
+  // ---- Energía y habilidades ----
+  energy = 0
+  /** Piezas que quedan con la cola completa visible (habilidad «Ver piezas»). */
+  peekPieces = 0
+  /** Tiempo restante de «Ralentizar»; como Congelar, solo baja dentro de update(). */
+  slowMs = 0
+  /** Pieza reservada (slot HOLD). */
+  hold: Piece | null = null
+  private snapshot: Snapshot | null = null
+
   private readonly random: () => number
   private readonly emit: (event: GameEvent) => void
 
@@ -163,6 +208,30 @@ export class Game {
     this.random = options.random ?? Math.random
     this.emit = options.onEvent ?? (() => {})
     this.reset()
+  }
+
+  /** Siguiente pieza (cabeza de la cola). */
+  get next(): Piece {
+    if (!this.queue.length) this.fillQueue()
+    return this.queue[0] as Piece
+  }
+
+  set next(piece: Piece) {
+    this.queue[0] = piece
+  }
+
+  get energyFull(): boolean {
+    return this.energy >= MAX_ENERGY
+  }
+
+  /** Hay un fijado que «Deshacer» puede revertir. */
+  get canUndo(): boolean {
+    return this.snapshot !== null
+  }
+
+  /** Intervalo de caída real (Ralentizar lo multiplica). */
+  get effectiveDropInterval(): number {
+    return this.slowMs > 0 ? this.dropInterval * SLOW_FACTOR : this.dropInterval
   }
 
   get challenge(): Challenge | undefined {
@@ -201,8 +270,14 @@ export class Game {
     this.combo = 0
     this.b2b = false
     this.lastMoveRotate = false
+    this.energy = 0
+    this.peekPieces = 0
+    this.slowMs = 0
+    this.hold = null
+    this.snapshot = null
     this.challenge?.setup?.(this)
-    this.next = this.pickNextPiece()
+    this.queue = []
+    this.fillQueue()
     this.spawn()
   }
 
@@ -284,19 +359,27 @@ export class Game {
   }
 
   /**
-   * Único punto que decide qué pieza entra en la cola. Prioridad: recompensa tras Tetris →
-   * power-up pendiente → pieza hueca (reto) → pentominó → estándar. Lo pendiente que no
-   * entra ahora se conserva para la siguiente pieza.
+   * Único punto que decide qué piezas entran en la cola. Lo pendiente se cuela al frente
+   * (pasa a ser la siguiente), con prioridad recompensa tras Tetris → power-up; lo que no
+   * entra ahora se conserva para la siguiente pieza. Después se rellena la cola al final con
+   * piezas aleatorias: hueca (reto) → pentominó → estándar.
    */
-  private pickNextPiece(): Piece {
+  private refillQueue(): void {
     if (this.pendingReward) {
       this.pendingReward = false
-      return this.makePiece(SINGLE)
-    }
-    if (this.pendingPowerUp) {
+      this.queue.unshift(this.makePiece(SINGLE))
+    } else if (this.pendingPowerUp) {
       this.pendingPowerUp = false
-      return this.makePiece(this.randomInt(POWER_FIRST, POWER_LAST))
+      this.queue.unshift(this.makePiece(this.randomInt(POWER_FIRST, POWER_LAST)))
     }
+    this.fillQueue()
+  }
+
+  private fillQueue(): void {
+    while (this.queue.length < QUEUE_SIZE) this.queue.push(this.randomPiece())
+  }
+
+  private randomPiece(): Piece {
     const roll = this.random()
     if (roll < HOLLOW_CHANCE) return this.makePiece(HOLLOW)
     if (roll < HOLLOW_CHANCE + PENTOMINO_CHANCE) {
@@ -341,7 +424,8 @@ export class Game {
     } else {
       this.dropAccum += dt
     }
-    if (this.dropAccum >= this.dropInterval) {
+    if (this.slowMs > 0) this.slowMs = Math.max(0, this.slowMs - dt)
+    if (this.dropAccum >= this.effectiveDropInterval) {
       this.dropAccum = 0
       if (!this.collide(this.current.shape, this.current.x, this.current.y + 1)) {
         this.current.y++
@@ -399,9 +483,9 @@ export class Game {
   hardDrop(): void {
     if (!this.canAct) return
     const gy = this.ghostY()
-    this.score += (gy - this.current.y) * 2
+    const dropPoints = (gy - this.current.y) * 2
     this.current.y = gy
-    this.lockPiece()
+    this.lockPiece(dropPoints)
   }
 
   togglePause(): void {
@@ -411,7 +495,10 @@ export class Game {
 
   // ---- Fijado: (T-spin) → merge → power-ups → líneas → nueva pieza ----
 
-  lockPiece(): void {
+  /** `dropPoints`: puntos del hard drop, sumados tras el snapshot para que Deshacer los quite. */
+  lockPiece(dropPoints = 0): void {
+    this.takeSnapshot() // para «Deshacer»
+    this.score += dropPoints
     const tspin = this.isTSpin() // antes de merge(): se evalúa sobre el tablero sin la pieza
     this.emitLock()
     this.merge()
@@ -459,8 +546,9 @@ export class Game {
   }
 
   private spawn(): void {
-    this.current = this.next
-    this.next = this.pickNextPiece()
+    this.current = this.queue.shift() ?? this.randomPiece()
+    this.refillQueue()
+    if (this.peekPieces > 0) this.peekPieces--
     if (this.collide(this.current.shape, this.current.x, this.current.y)) {
       this.finish(false, 'No queda espacio para la nueva pieza')
       return
@@ -503,6 +591,7 @@ export class Game {
     ]
     this.lines += cleared
     this.combo++
+    this.addEnergy(cleared * ENERGY_PER_LINE + (cleared >= 4 || tspin ? ENERGY_BONUS : 0))
     // Los comodines que queden se eliminan con cualquier limpieza de líneas (antes de
     // puntuar, para que cuenten en un posible perfect clear)
     const wild = this.removeWildcards()
@@ -562,6 +651,139 @@ export class Game {
         }
       })
     return count
+  }
+
+  // ---- Energía y habilidades ----
+
+  private addEnergy(amount: number): void {
+    if (!amount || this.energyFull) return
+    this.energy = Math.min(MAX_ENERGY, this.energy + amount)
+    if (this.energyFull) {
+      this.popup('¡ENERGÍA LLENA! (E)', '#ffd54f')
+      this.emit({ type: 'energy-full' })
+    }
+  }
+
+  private takeSnapshot(): void {
+    this.snapshot = {
+      board: this.board.map((row) => [...row]),
+      score: this.score,
+      lines: this.lines,
+      level: this.level,
+      dropInterval: this.dropInterval,
+      combo: this.combo,
+      b2b: this.b2b,
+      linesToPowerUp: this.linesToPowerUp,
+      pendingPowerUp: this.pendingPowerUp,
+      pendingReward: this.pendingReward,
+      queue: this.queue.map(clonePiece),
+      pieceType: this.current.type,
+      hold: this.hold && clonePiece(this.hold),
+    }
+  }
+
+  /**
+   * Gasta la barra llena en una habilidad. Si no se puede aplicar (p. ej. no hay nada que
+   * deshacer o la pieza nueva no cabe) no se gasta energía. Devuelve si se aplicó.
+   */
+  useSkill(id: SkillId): boolean {
+    if (!this.canAct || !this.energyFull) return false
+    const ok = this.applySkill(id)
+    const info = skillInfo(id)
+    if (ok) {
+      this.energy = 0
+      this.popup(info?.name.toUpperCase() ?? '', info?.color)
+    } else {
+      this.popup('NO DISPONIBLE', '#9e9e9e')
+    }
+    this.emit({ type: 'skill', id, ok })
+    return ok
+  }
+
+  private applySkill(id: SkillId): boolean {
+    switch (id) {
+      case 'peek':
+        this.peekPieces = PEEK_PIECES
+        return true
+      case 'swap':
+        return this.swapPiece()
+      case 'slow':
+        this.slowMs = SLOW_MS
+        return true
+      case 'undo':
+        return this.undo()
+      case 'hold':
+        return this.swapHold()
+    }
+  }
+
+  /** Sustituye la pieza actual por otra estándar de tipo distinto, en posición de salida. */
+  private swapPiece(): boolean {
+    const options = Array.from({ length: STANDARD_COUNT }, (_, i) => i + 1).filter(
+      (t) => t !== this.current.type,
+    )
+    const type = options[this.randomInt(0, options.length - 1)] ?? 1
+    return this.replaceCurrent(this.makePiece(type))
+  }
+
+  /** Revierte el último fijado: tablero, puntos, cola… y esa pieza vuelve a salir. */
+  private undo(): boolean {
+    const s = this.snapshot
+    if (!s) return false
+    const piece = this.makePiece(s.pieceType)
+    if (this.collideOn(s.board, piece)) return false
+    this.board = s.board
+    this.score = s.score
+    this.lines = s.lines
+    this.level = s.level
+    this.dropInterval = s.dropInterval
+    this.combo = s.combo
+    this.b2b = s.b2b
+    this.linesToPowerUp = s.linesToPowerUp
+    this.pendingPowerUp = s.pendingPowerUp
+    this.pendingReward = s.pendingReward
+    this.queue = s.queue
+    this.hold = s.hold
+    this.snapshot = null // un solo nivel de deshacer
+    this.setCurrent(piece)
+    return true
+  }
+
+  /**
+   * Guarda la pieza actual en HOLD. Si el slot estaba vacío entra la siguiente de la cola;
+   * si no, se intercambia con la guardada. Las piezas vuelven a su forma de salida.
+   */
+  private swapHold(): boolean {
+    const incoming = this.hold ? this.makePiece(this.hold.type) : this.next
+    if (this.collide(incoming.shape, incoming.x, incoming.y)) return false
+    if (!this.hold) {
+      this.queue.shift()
+      this.fillQueue()
+    }
+    this.hold = this.makePiece(this.current.type)
+    this.setCurrent(incoming)
+    return true
+  }
+
+  /** Cambia la pieza en juego si cabe en su posición de salida. */
+  private replaceCurrent(piece: Piece): boolean {
+    if (this.collide(piece.shape, piece.x, piece.y)) return false
+    this.setCurrent(piece)
+    return true
+  }
+
+  private setCurrent(piece: Piece): void {
+    this.current = piece
+    this.dropAccum = 0
+    this.lastMoveRotate = false
+  }
+
+  private collideOn(board: Board, piece: Piece): boolean {
+    let hit = false
+    forEachCell(piece.shape, (r, c) => {
+      if (board[piece.y + r]?.[piece.x + c]) hit = true
+    })
+    return hit
   }
 
   // ---- Power-ups ----

@@ -5,7 +5,7 @@ import { drawBoard } from '../render/canvas'
 import { useGameContext } from '../composables/useGame'
 
 const props = defineProps<{ gridColor: string }>()
-const { game, effects, onFrame } = useGameContext()
+const { game, effects, hud, onFrame } = useGameContext()
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
 
 let off: (() => void) | undefined
@@ -29,5 +29,12 @@ onUnmounted(() => off?.())
 
 <template>
   <!-- El tamaño se deriva de las constantes del motor -->
-  <canvas id="board" ref="canvas" :width="COLS * BLOCK" :height="ROWS * BLOCK"></canvas>
+  <!-- Ralentizar / Congelar tiñen el borde del tablero mientras duran -->
+  <canvas
+    id="board"
+    ref="canvas"
+    :class="{ 'board--slow': hud.slowed, 'board--frozen': hud.frozen }"
+    :width="COLS * BLOCK"
+    :height="ROWS * BLOCK"
+  ></canvas>
 </template>

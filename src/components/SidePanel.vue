@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { MAX_COMBO_MULTIPLIER } from '../engine/constants'
+import { QUEUE_SIZE } from '../engine/skills'
 import { useGameContext } from '../composables/useGame'
 import PiecePreview from './PiecePreview.vue'
 
@@ -43,6 +44,15 @@ const comboLabel = computed(() =>
       </div>
     </div>
     <div class="panel-section">
+      <span class="label">ENERGÍA</span>
+      <div class="energy-bar" :class="{ full: hud.energyFull }">
+        <div class="energy-fill" :style="{ width: `${hud.energy}%` }"></div>
+      </div>
+      <Transition name="pop">
+        <span v-if="hud.energyFull" class="info energy-hint"><kbd>E</kbd> habilidades</span>
+      </Transition>
+    </div>
+    <div class="panel-section">
       <span class="label">POWER-UP</span>
       <span class="info">{{ hud.powerUpInfo }}</span>
     </div>
@@ -50,6 +60,17 @@ const comboLabel = computed(() =>
     <div class="panel-section">
       <span class="label">NEXT</span>
       <PiecePreview :piece="() => game.next" />
+      <!-- «Ver piezas»: el resto de la cola en miniatura -->
+      <Transition name="slide">
+        <div v-if="hud.peek" class="queue-strip">
+          <PiecePreview
+            v-for="i in QUEUE_SIZE - 1"
+            :key="i"
+            :piece="() => game.queue[i] ?? null"
+            :cell-size="12"
+          />
+        </div>
+      </Transition>
     </div>
   </aside>
 </template>

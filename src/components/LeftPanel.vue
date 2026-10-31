@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { useGameContext } from '../composables/useGame'
+import PiecePreview from './PiecePreview.vue'
 
-const { hud } = useGameContext()
+const { game, hud } = useGameContext()
 </script>
 
 <template>
@@ -11,6 +12,13 @@ const { hud } = useGameContext()
         <span class="label">OBJETIVO</span>
         <span class="objective-name">{{ hud.challengeName }}</span>
         <span class="info">{{ hud.objective }}</span>
+      </div>
+    </Transition>
+
+    <Transition name="pop">
+      <div v-if="hud.hasHold" class="panel-section">
+        <span class="label">HOLD</span>
+        <PiecePreview :piece="() => game.hold" />
       </div>
     </Transition>
 
@@ -26,6 +34,7 @@ const { hud } = useGameContext()
         <li><kbd>↑</kbd> rotar</li>
         <li><kbd>↓</kbd> bajar</li>
         <li><kbd>Space</kbd> caída</li>
+        <li><kbd>E</kbd> habilidades</li>
         <li><kbd>P</kbd> pausa</li>
         <li><kbd>M</kbd> sonido: {{ hud.muted ? 'off' : 'on' }}</li>
       </ul>

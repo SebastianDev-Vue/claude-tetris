@@ -1,5 +1,6 @@
 import { BLOCK, COLORS, COLS, ROWS, T_PIECE } from '../engine/constants'
 import type { Cell, GameEvent } from '../engine/game'
+import { skillInfo } from '../engine/skills'
 
 type Ctx = CanvasRenderingContext2D
 
@@ -330,6 +331,19 @@ export class Effects {
         break
       case 'finish':
         this.handleFinish(event.won, now)
+        break
+      case 'skill': {
+        if (!event.ok) break
+        // onda y estrellas del color de la habilidad desde el centro del tablero
+        const color = skillInfo(event.id)?.color ?? '#fff'
+        const cx = (COLS * BLOCK) / 2
+        const cy = (ROWS * BLOCK) / 2
+        this.particles.ring(cx, cy, color, now, BLOCK * 6, 700)
+        this.particles.burst(cx, cy, color, 20, { star: true, speed: 0.16 })
+        break
+      }
+      case 'energy-full':
+        this.particles.ring((COLS * BLOCK) / 2, (ROWS * BLOCK) / 2, '#ffd54f', now, BLOCK * 4, 600)
         break
     }
   }

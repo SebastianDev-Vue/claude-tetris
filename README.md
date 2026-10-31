@@ -17,6 +17,7 @@ Implementación de **Tetris** con **Vue 3 + TypeScript**, renderizado en HTML5 C
   - [Piezas no estándar](#piezas-no-estándar)
   - [Combos y bonificaciones](#combos-y-bonificaciones)
   - [Modo desafío](#modo-desafío)
+  - [Energía y habilidades](#energía-y-habilidades)
 - [Cómo ejecutar el juego](#cómo-ejecutar-el-juego)
 - [Controles](#controles)
 - [Cómo funciona](#cómo-funciona)
@@ -45,6 +46,7 @@ Es una versión jugable de Tetris con todas las mecánicas que esperarías:
 - **Pausa** y **Game Over** con opción de reinicio.
 - **Tema claro / oscuro**.
 - **Modo desafío**: Maratón y 5 desafíos con objetivos (ver abajo).
+- **Habilidades**: barra de energía que se carga limpiando líneas y se gasta en 5 habilidades.
 - **Power-ups**: cada 8 líneas aparece una pieza especial de 1 bloque (ver abajo).
 - **Piezas no estándar**: pentominós, piezas de reto y recompensas (ver abajo), con halo pulsante y animaciones al entrar en juego.
 
@@ -105,6 +107,18 @@ Al abrir el juego aparece el menú de modos (teclas `1`–`6` o clic):
 
 El panel izquierdo muestra el objetivo con su progreso y el tiempo de juego. Al cumplirlo aparece **¡OBJETIVO CUMPLIDO!** con fuegos artificiales y fanfarria; desde el fin de partida o la pausa puedes **reiniciar** el mismo modo o volver al **menú**.
 
+### Energía y habilidades
+
+Cada línea limpiada carga **+10** de energía, y un Tetris o un T-spin con líneas suma **+10** extra. Con la barra llena (brilla y aparece `E`), pulsa **`E`** para abrir el menú de habilidades: el juego se detiene mientras eliges con `1`–`5` o con un clic, y `Esc` cancela. Cada habilidad gasta la barra entera. Si no puede aplicarse (por ejemplo, no hay nada que deshacer), no gasta nada.
+
+| # | Habilidad | Efecto |
+| - | --------- | ------ |
+| 1 | 👁 **Ver piezas** | El panel muestra las próximas 5 piezas durante 10 turnos |
+| 2 | 🔄 **Intercambiar** | Cambia la pieza actual por otra estándar distinta |
+| 3 | 🐢 **Ralentizar** | La caída va a la mitad de velocidad durante 10 s (el borde del tablero se tiñe de verde) |
+| 4 | ↩ **Deshacer** | Revierte el último fijado (tablero, puntos, líneas, combo y cola) y esa pieza vuelve a salir. Solo un nivel |
+| 5 | 📦 **Reservar pieza** | Guarda la pieza actual en el slot **HOLD** o la cambia por la guardada |
+
 ---
 
 ## Cómo ejecutar el juego
@@ -138,6 +152,7 @@ bun run preview    # sirve dist/ localmente
 | `M`       | Activar / silenciar el sonido     |
 | `P` o `Esc` | Pausa (con opciones Continuar / Reiniciar / Menú) |
 | `1`–`6`   | Elegir modo en el menú            |
+| `E`       | Menú de habilidades (con la barra de energía llena) |
 
 ---
 
@@ -224,6 +239,7 @@ Los tests (`src/engine/__tests__/game.spec.ts`) cubren el motor: colisiones, rot
 │   │   ├── constants.ts       # Tablas: piezas, colores, puntuación, power-ups
 │   │   ├── game.ts            # Motor del juego (clase Game)
 │   │   ├── challenges.ts      # Modos de juego y desafíos
+│   │   ├── skills.ts          # Energía y habilidades
 │   │   └── __tests__/
 │   │       └── game.spec.ts   # Tests del motor (Vitest)
 │   ├── audio/

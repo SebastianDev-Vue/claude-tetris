@@ -2,6 +2,7 @@ import { inject, markRaw, onMounted, onUnmounted, reactive, type InjectionKey } 
 import { Game } from '../engine/game'
 import { isPowerUp } from '../engine/constants'
 import { MODES, formatTime, type GameMode } from '../engine/challenges'
+import { SKILLS, type SkillId } from '../engine/skills'
 import { Effects } from '../render/effects'
 import { Sfx } from '../audio/sfx'
 
@@ -27,6 +28,18 @@ export interface Hud {
   objective: string
   won: boolean
   endReason: string
+  /** Energía 0–100 y si la barra está llena (habilidades disponibles). */
+  energy: number
+  energyFull: boolean
+  /** Menú de habilidades abierto (el juego no avanza). */
+  skillMenu: boolean
+  /** «Ver piezas» activa: el panel muestra la cola completa. */
+  peek: boolean
+  /** Efectos temporales activos, para teñir el tablero. */
+  slowed: boolean
+  frozen: boolean
+  hasHold: boolean
+  canUndo: boolean
   /** Tiempo de juego formateado (m:ss). */
   time: string
 }
@@ -47,6 +60,9 @@ export interface GameContext {
   /** Vuelve a la pantalla de selección de modo. */
   openMenu: () => void
   togglePause: () => void
+  /** Usa una habilidad desde el menú (lo cierra y reanuda). */
+  useSkill: (id: SkillId) => void
+  closeSkillMenu: () => void
 }
 
 export const GameKey: InjectionKey<GameContext> = Symbol('game')
@@ -100,6 +116,14 @@ export function useGame(): GameContext {
     won: false,
     endReason: '',
     time: '0:00',
+    energy: 0,
+    energyFull: false,
+    skillMenu: false,
+    peek: false,
+    slowed: false,
+    frozen: false,
+    hasHold: false,
+    canUndo: false,
   })
   const listeners = new Set<FrameListener>()
   let animId = 0
@@ -122,10 +146,17 @@ export function useGame(): GameContext {
     hud.won = game.result === 'won'
     hud.endReason = game.endReason
     hud.time = formatTime(game.elapsedMs)
+    hud.energy = game.energy
+    hud.energyFull = game.energyFull
+    hud.peek = game.peekPieces > 0
+    hud.slowed = game.slowMs > 0
+    hud.frozen = game.frozenMs > 0
+    hud.hasHold = game.hold !== null
+    hud.canUndo = game.canUndo
   }
 
   function frame(now: number): void {
-    if (!hud.menu) game.update(now - lastTime)
+    if (!hud.menu && !hud.skillMenu) game.update(now - lastTime)
     lastTime = now
     syncHud()
     listeners.forEach((fn) => fn(now))
@@ -137,6 +168,7 @@ export function useGame(): GameContext {
     effects.clear()
     game.reset(mode)
     hud.menu = false
+    hud.skillMenu = false
     syncHud()
   }
 
@@ -146,12 +178,36 @@ export function useGame(): GameContext {
 
   function openMenu(): void {
     hud.menu = true
+    hud.skillMenu = false
     syncHud()
   }
 
   function togglePause(): void {
     game.togglePause()
     syncHud()
+  }
+
+  /** El menú de habilidades solo se abre con la barra llena y la partida en marcha. */
+  function openSkillMenu(): void {
+    if (!game.energyFull || game.paused || game.gameOver) return
+    hud.skillMenu = true
+  }
+
+  function closeSkillMenu(): void {
+    hud.skillMenu = false
+    syncHud()
+  }
+
+  function useSkill(id: SkillId): void {
+    hud.skillMenu = false // el motor ignora input en menú/pausa, así que cerrar primero
+    game.useSkill(id)
+    syncHud()
+  }
+
+  function onSkillKey(e: KeyboardEvent): void {
+    if (e.code === 'Escape' || e.code === 'KeyE') return closeSkillMenu()
+    const skill = SKILLS[Number(e.key) - 1]
+    if (skill) useSkill(skill.id)
   }
 
   function onMenuKey(e: KeyboardEvent): void {
@@ -168,7 +224,11 @@ export function useGame(): GameContext {
       return syncHud()
     }
     if (hud.menu) return onMenuKey(e)
+    if (hud.skillMenu) return onSkillKey(e)
     switch (e.code) {
+      case 'KeyE':
+        openSkillMenu()
+        break
       case 'KeyP':
       case 'Escape':
         game.togglePause()
@@ -214,5 +274,16 @@ export function useGame(): GameContext {
   })
 
   syncHud()
-  return { game, effects, hud, onFrame, start, restart, openMenu, togglePause }
+  return {
+    game,
+    effects,
+    hud,
+    onFrame,
+    start,
+    restart,
+    openMenu,
+    togglePause,
+    useSkill,
+    closeSkillMenu,
+  }
 }
