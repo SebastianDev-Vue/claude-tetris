@@ -1,37 +1,41 @@
 # Tetris
 
-Implementación del clásico **Tetris** en JavaScript vanilla, usando HTML5 Canvas y CSS. Sin dependencias externas, sin frameworks, sin proceso de build: solo abrir y jugar.
+Implementación de **Tetris** con **Vue 3 + TypeScript**, renderizado en HTML5 Canvas y empaquetado con **Vite**. El motor del juego es TypeScript puro (sin DOM) y está cubierto por tests con **Vitest**.
 
+![Tech](https://img.shields.io/badge/Vue-3-42b883)
+![Tech](https://img.shields.io/badge/TypeScript-blue)
+![Tech](https://img.shields.io/badge/Vite-646cff)
+![Tech](https://img.shields.io/badge/Bun-black)
 ![Tech](https://img.shields.io/badge/HTML5-Canvas-orange)
-![Tech](https://img.shields.io/badge/CSS3-blueviolet)
-![Tech](https://img.shields.io/badge/JavaScript-Vanilla-yellow)
 
 ---
 
 ## Tabla de contenidos
 
-- [Tetris](#tetris)
-  - [Tabla de contenidos](#tabla-de-contenidos)
-  - [Qué hace el proyecto](#qué-hace-el-proyecto)
-  - [Cómo ejecutar el juego](#cómo-ejecutar-el-juego)
-    - [Opción 1: abrir el archivo directamente](#opción-1-abrir-el-archivo-directamente)
-    - [Opción 2: servidor local (recomendado)](#opción-2-servidor-local-recomendado)
-  - [Controles](#controles)
-  - [Cómo funciona](#cómo-funciona)
-    - [1. `index.html`](#1-indexhtml)
-    - [2. `style.css`](#2-stylecss)
-    - [3. `game.js`](#3-gamejs)
-    - [Flujo del juego](#flujo-del-juego)
-  - [Tecnologías](#tecnologías)
-  - [Estructura del proyecto](#estructura-del-proyecto)
-  - [Personalización](#personalización)
-  - [Licencia](#licencia)
+- [Qué hace el proyecto](#qué-hace-el-proyecto)
+  - [Power-ups](#power-ups)
+  - [Piezas no estándar](#piezas-no-estándar)
+  - [Combos y bonificaciones](#combos-y-bonificaciones)
+  - [Modo desafío](#modo-desafío)
+  - [Energía y habilidades](#energía-y-habilidades)
+  - [Hold](#hold)
+  - [Modo retro](#modo-retro)
+- [Cómo ejecutar el juego](#cómo-ejecutar-el-juego)
+- [Controles](#controles)
+- [Cómo funciona](#cómo-funciona)
+  - [Arquitectura](#arquitectura)
+  - [Flujo del juego](#flujo-del-juego)
+- [Tests y calidad de código](#tests-y-calidad-de-código)
+- [Tecnologías](#tecnologías)
+- [Estructura del proyecto](#estructura-del-proyecto)
+- [Personalización](#personalización)
+- [Licencia](#licencia)
 
 ---
 
 ## Qué hace el proyecto
 
-Es una versión jugable del Tetris clásico con todas las mecánicas que esperarías:
+Es una versión jugable de Tetris con todas las mecánicas que esperarías:
 
 - Tablero de **10 × 20** celdas.
 - Las **7 piezas estándar** (I, O, T, S, Z, J, L) con colores diferenciados.
@@ -39,40 +43,120 @@ Es una versión jugable del Tetris clásico con todas las mecánicas que esperar
 - **Soft drop** (bajada acelerada) y **hard drop** (caída instantánea).
 - **Pieza fantasma** (_ghost piece_): muestra dónde aterrizará la pieza actual.
 - **Vista previa** de la siguiente pieza.
-- **Sistema de puntuación** clásico de Tetris (100 / 300 / 500 / 800 multiplicado por nivel).
+- **Sistema de puntuación** clásico (100 / 300 / 500 / 800 multiplicado por nivel) con **combos, T-spin, Back-to-Back y perfect clear** (ver abajo).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
+- **Tema claro / oscuro**.
+- **Modo desafío**: Maratón y 5 desafíos con objetivos (ver abajo).
+- **Habilidades**: barra de energía que se carga limpiando líneas y se gasta en 5 habilidades.
+- **Hold**: guarda una pieza para más tarde (una vez por turno).
+- **Modo retro**: aspecto de consola 8-bit con paleta que cambia por nivel (tecla `R`).
+- **Power-ups**: cada 8 líneas aparece una pieza especial de 1 bloque (ver abajo).
+- **Piezas no estándar**: pentominós, piezas de reto y recompensas (ver abajo), con halo pulsante y animaciones al entrar en juego.
+
+### Power-ups
+
+| Pieza | Efecto al fijarse |
+| ----- | ----------------- |
+| 💣 Bomba | Destruye el área 3×3 alrededor del bloque |
+| ⚡ Rayo | Limpia la fila y la columna completas del bloque |
+| 🎨 Tinte | Convierte en comodines (★) todos los bloques del color sobre el que cae (o del más abundante). Los comodines desaparecen con la siguiente limpieza de líneas y dan 50 puntos × nivel cada uno |
+| ⬇ Gravedad | Compacta el tablero: cada columna cae hasta rellenar los huecos |
+| ❄ Congelar | Detiene la caída automática durante 5 segundos |
+
+El panel lateral muestra cuántas líneas faltan para el siguiente power-up y el tiempo restante de Congelar.
+
+### Piezas no estándar
+
+| Pieza | Bloques | Cuándo aparece |
+| ----- | ------- | -------------- |
+| Pentominó **+** | 5 | Ocasionalmente (10 % entre +, U e Y) |
+| Pentominó **U** | 5 | Ocasionalmente |
+| Pentominó **Y** | 5 | Ocasionalmente |
+| **Single** 1×1 (dorada) | 1 | Como **recompensa** justo después de un Tetris |
+| **Hueca 3×3** | 8 | Como **reto** (4 %): deja un hueco en el centro que solo el single puede tapar limpiamente |
+
+Las piezas especiales brillan con un halo pulsante (también en la vista previa NEXT) y al entrar en juego lanzan chispas; la recompensa suelta estrellas doradas y el reto, ondas de aviso.
+
+### Combos y bonificaciones
+
+Cada jugada que limpia líneas se puntúa así:
+
+```
+puntos = base × nivel × combo × B2B  (+ perfect clear)
+```
+
+| Concepto | Regla |
+| -------- | ----- |
+| **Base** | 100 / 300 / 500 / 800 por 1–4 líneas. Un **T-spin** usa su propia tabla: 400 / 800 / 1200 / 1600 por 0–3 líneas |
+| **Combo** | Limpiar líneas en fijados consecutivos multiplica: x2, x3, x4… (tope x10). Fijar sin limpiar lo reinicia |
+| **T-spin** | Pieza T fijada justo después de rotarla, con al menos 3 de las 4 esquinas de su caja 3×3 ocupadas. Moverse o el soft drop tras rotar lo anulan; la caída normal y el hard drop no. Un T-spin sin líneas también puntúa |
+| **Back-to-Back** | Un Tetris o T-spin con líneas justo después de otro vale **×1,5**. Un clear "fácil" (1–3 líneas sin T-spin) rompe la cadena |
+| **Perfect clear** | Dejar el tablero completamente vacío: **+3000 × nivel** |
+
+Efectos: destello en las filas limpiadas, barrido de chispas, sacudida del tablero (más fuerte en Tetris, T-spin y perfect clear), ondas para el B2B, lluvia de estrellas en el perfect clear y textos flotantes. Cada jugada tiene su **sonido** sintetizado y el tono sube con el combo (`M` para silenciar). El panel muestra el multiplicador de combo con una animación y la insignia **B2B** cuando el siguiente Tetris o T-spin recibirá la bonificación.
+
+### Modo desafío
+
+Al abrir el juego aparece el menú de modos (teclas `1`–`6` o clic):
+
+| Modo | Objetivo | Regla especial |
+| ---- | -------- | -------------- |
+| **Maratón** | Aguantar todo lo posible | El modo clásico |
+| **Sprint** | Limpiar 40 líneas | Tienes 2:00; si se acaba el tiempo, pierdes |
+| **Basura** | Sobrevivir 3:00 | Cada 10 s sube desde abajo una fila de basura gris con un hueco |
+| **Bloques fijos** | Eliminar todos los bloques fijos (◆) | El tablero empieza con 8 filas parcialmente llenas |
+| **Invisible** | Limpiar 20 líneas | Las piezas se desvanecen al tocar suelo; el tablero se revela al terminar |
+| **Rotación inversa** | Llegar al nivel 5 | Desde el nivel 3 las piezas giran en sentido antihorario |
+
+El panel izquierdo muestra el objetivo con su progreso y el tiempo de juego. Al cumplirlo aparece **¡OBJETIVO CUMPLIDO!** con fuegos artificiales y fanfarria; desde el fin de partida o la pausa puedes **reiniciar** el mismo modo o volver al **menú**.
+
+### Energía y habilidades
+
+Cada línea limpiada carga **+10** de energía, y un Tetris o un T-spin con líneas suma **+10** extra. Con la barra llena (brilla y aparece `E`), pulsa **`E`** para abrir el menú de habilidades: el juego se detiene mientras eliges con `1`–`5` o con un clic, y `Esc` cancela. Cada habilidad gasta la barra entera. Si no puede aplicarse (por ejemplo, no hay nada que deshacer), no gasta nada.
+
+| # | Habilidad | Efecto |
+| - | --------- | ------ |
+| 1 | 👁 **Ver piezas** | El panel muestra las próximas 5 piezas durante 10 turnos |
+| 2 | 🔄 **Intercambiar** | Cambia la pieza actual por otra estándar distinta |
+| 3 | 🐢 **Ralentizar** | La caída va a la mitad de velocidad durante 10 s (el borde del tablero se tiñe de verde) |
+| 4 | ↩ **Deshacer** | Revierte el último fijado (tablero, puntos, líneas, combo y cola) y esa pieza vuelve a salir. Solo un nivel |
+| 5 | 📦 **Hold extra** | Permite usar **HOLD** una segunda vez en el mismo turno |
+
+### Hold
+
+Pulsa **`C`** para guardar la pieza actual en el slot **HOLD** (panel izquierdo). Si ya había una guardada, se intercambian. Las piezas salen siempre desde arriba y con su orientación inicial. Solo puede usarse **una vez por turno**: el slot se atenúa hasta que se fija la pieza. Los power-ups también se pueden guardar. Si la pieza que entraría no cabe, el hold se rechaza con el aviso «NO DISPONIBLE». (No se usa `Shift`: en Windows, pulsarlo 5 veces seguidas abre el aviso de «Teclas especiales».)
+
+### Modo retro
+
+El botón **Modo retro** (arriba a la derecha) o la tecla **`R`** dan al juego un aspecto de consola 8-bit:
+
+- Los bloques se dibujan en píxeles gruesos, con contorno negro, luz, sombra y un destello en la esquina.
+- La paleta es limitada (tres colores) y **cambia con cada nivel**; hay 10 paletas que rotan. Los power-ups llevan su letra (`B` Bomba, `R` Rayo, `T` Tinte, `G` Gravedad, `F` Congelar), el comodín es blanco con `*`, y la basura y los bloques fijos son grises.
+- Los textos usan una fuente bitmap pixelada. No hay rejilla, pieza fantasma ni halos. Los efectos (popups, chispas, ondas) salen en un solo color de la paleta del nivel.
+- El tablero tiene un marco de bandas en píxeles y, encima, líneas de barrido de monitor CRT.
+
+Se puede activar en cualquier momento: en el menú, jugando, en pausa o al terminar. Mientras está activo, el botón de tema claro/oscuro se desactiva, y al salir se recupera el tema que tenías.
 
 ---
 
 ## Cómo ejecutar el juego
 
-No hay nada que instalar ni compilar. Tienes dos opciones:
-
-### Opción 1: abrir el archivo directamente
+Requiere [Bun](https://bun.sh). El proyecto se generó con el creador oficial de Vue, `bun create vue@latest` (TypeScript, Vitest, Oxfmt y Oxlint).
 
 ```bash
-open index.html        # macOS
-xdg-open index.html    # Linux
-start index.html       # Windows
+bun install        # instala dependencias
+bun run dev        # servidor de desarrollo en http://localhost:5173
 ```
 
-### Opción 2: servidor local (recomendado)
-
-Cualquier servidor estático funciona. Algunos ejemplos:
+Para generar la versión de producción:
 
 ```bash
-# Con Python 3
-python3 -m http.server 8000
-
-# Con Node.js (npx)
-npx serve .
-
-# Con PHP
-php -S localhost:8000
+bun run build      # chequeo de tipos + build en dist/
+bun run preview    # sirve dist/ localmente
 ```
 
-Después abre `http://localhost:8000` en el navegador.
+> Ya no se puede abrir `index.html` con doble clic: el navegador bloquea los módulos ES sobre `file://`. Usa siempre `bun run dev` o sirve la carpeta `dist/`.
 
 ---
 
@@ -84,71 +168,82 @@ Después abre `http://localhost:8000` en el navegador.
 | `↑` o `X` | Rotar la pieza en sentido horario |
 | `↓`       | Soft drop (bajar más rápido)      |
 | `Espacio` | Hard drop (caída instantánea)     |
-| `P`       | Pausar / reanudar                 |
+| `C`       | Hold: guardar o intercambiar la pieza |
+| `M`       | Activar / silenciar el sonido     |
+| `P` o `Esc` | Pausa (con opciones Continuar / Reiniciar / Menú) |
+| `1`–`6`   | Elegir modo en el menú            |
+| `E`       | Menú de habilidades (con la barra de energía llena) |
+| `R`       | Activar / desactivar el modo retro |
 
 ---
 
 ## Cómo funciona
 
-El juego se compone de tres archivos que cooperan:
+### Arquitectura
 
-### 1. `index.html`
+El código se divide en tres capas que no se mezclan:
 
-Define la estructura visual:
+1. **Motor** (`src/engine/`): TypeScript puro, sin DOM ni Vue.
+   - `constants.ts`: tamaño del tablero, colores, formas de las piezas, puntuaciones y power-ups.
+   - `game.ts`: la clase `Game` con todo el estado (tablero, pieza actual y siguiente, puntuación, nivel…) y las reglas: colisiones, rotación con _wall kicks_, caída, limpieza de líneas y power-ups. Se maneja con `update(dt)` en cada frame y con métodos de input (`moveLeft`, `rotate`, `hardDrop`…). Comunica los efectos visuales mediante eventos (`onEvent`).
+2. **Render** (`src/render/`): `canvas.ts` dibuja el tablero, la pieza fantasma y las vistas previas; `effects.ts` gestiona los efectos pasajeros (textos flotantes, partículas y ondas) a partir de los eventos del motor.
+3. **Interfaz Vue** (`src/composables/`, `src/components/`):
+   - `useGame()` crea el motor, el único bucle `requestAnimationFrame`, los atajos de teclado y una copia reactiva (`hud`) de los datos que muestra el panel.
+   - `useTheme()` gestiona el tema claro/oscuro.
+   - Componentes: `GameBoard` (canvas del tablero), `LeftPanel` (objetivo, tiempo, controles), `SidePanel` (puntuación, combo, siguiente pieza), `PiecePreview`, `GameOverlay` (menú de modos, pausa y fin de partida con transiciones) y `ThemeToggle` (botones de tema y modo retro).
 
-- Un `<canvas id="board">` de **300 × 600** píxeles donde se renderiza el tablero.
-- Un panel lateral con `SCORE`, `LINES`, `LEVEL`, vista de la siguiente pieza y la lista de controles.
-- Un overlay para los estados **PAUSA** y **GAME OVER**.
+Algunas decisiones de diseño:
 
-### 2. `style.css`
-
-Aporta el aspecto visual con estética _dark / retro arcade_: fondo oscuro, tipografía monoespaciada para los marcadores y _backdrop blur_ en los overlays.
-
-### 3. `game.js`
-
-Contiene toda la lógica del juego. A grandes rasgos:
-
-- **Modelo del tablero**: una matriz `ROWS × COLS` donde cada celda guarda `0` (vacía) o un índice de color (1–7) que identifica la pieza.
-- **Piezas**: definidas como matrices cuadradas. Para rotar se calcula la transposición + reverso de filas (`rotateCW`).
-- **Detección de colisiones** (`collide`): comprueba que ninguna celda de la pieza salga del tablero ni se solape con bloques ya fijados.
-- **Wall kicks** (`tryRotate`): si la rotación choca, intenta desplazar la pieza ±1 y ±2 columnas antes de descartar el giro.
-- **Game loop** (`loop`): basado en `requestAnimationFrame`, acumula el tiempo transcurrido y baja la pieza una fila cuando se supera `dropInterval`.
-- **Limpieza de líneas** (`clearLines`): recorre el tablero de abajo hacia arriba; cada fila completa se elimina y se inserta una vacía en la cima.
-- **Puntuación**: usa la tabla clásica `[0, 100, 300, 500, 800]` multiplicada por el nivel actual; el hard drop suma 2 puntos por celda recorrida y el soft drop 1 punto por fila.
-- **Nivel y velocidad**: el nivel sube cada 10 líneas; la velocidad de caída se calcula como `max(100, 1000 − (level − 1) × 90)` milisegundos.
-- **Ghost piece** (`ghostY`): proyecta la posición final de la pieza actual hacia abajo y la dibuja con `globalAlpha = 0.2`.
+- **El tablero no es reactivo.** El motor se marca con `markRaw` para que Vue no lo envuelva en proxies; el canvas lo lee directamente en cada frame.
+- **El bucle corre siempre** mientras la app está montada; el motor ignora `update()` en pausa o tras game over. Así reanudar nunca hace caer la pieza de golpe y no puede quedar un bucle vivo tras perder.
+- **El tipo de pieza es también su índice de color**: las formas se rellenan con su propio número (1–18) y esos valores se copian al tablero tal cual.
 
 ### Flujo del juego
 
 ```
-init()
-  ├─ createBoard()                  → matriz vacía
-  ├─ next = randomPiece()
-  ├─ spawn()                        → mueve next a current y genera nueva next
-  └─ requestAnimationFrame(loop)
+useGame()
+  ├─ new Game()                      → reset(): tablero vacío, pieza actual y siguiente
+  └─ onMounted → requestAnimationFrame(frame)
         ↓
-   loop(timestamp)
-     ├─ acumula dt
-     ├─ si dt ≥ dropInterval → baja la pieza o llama a lockPiece()
-     ├─ draw()  (grid + tablero + ghost + pieza actual)
-     └─ requestAnimationFrame(loop)
+   frame(now)
+     ├─ game.update(dt)               → baja la pieza o llama a lockPiece()
+     ├─ sincroniza hud (score, lines, level…)
+     ├─ GameBoard / PiecePreview dibujan en sus canvas
+     └─ requestAnimationFrame(frame)
 
+   lockPiece(): isTSpin → merge → resolvePowerUp → clearLines (puntuación) → spawn
    keydown → mover / rotar / soft-drop / hard-drop / pausa
 ```
 
-Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara `endGame()` y se muestra el overlay de **Game Over**.
+Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), el juego pasa a **Game Over**.
+
+---
+
+## Tests y calidad de código
+
+```bash
+bun run test:unit          # Vitest en modo watch
+bun run test:unit --run    # una sola pasada
+bun run type-check         # chequeo de tipos con vue-tsc (TypeScript 7 / tsgo)
+bun run lint               # Oxlint
+bun run format             # Oxfmt (sin punto y coma, comillas simples)
+```
+
+> No uses `bun test`: lanza el test runner propio de Bun en lugar de Vitest.
+
+Los tests (`src/engine/__tests__/game.spec.ts`) cubren el motor: colisiones, rotación y _wall kicks_, caída, pausa, game over, puntuación, niveles, cada power-up, las piezas no estándar, combos, T-spin, B2B y perfect clear. `src/render/__tests__/effects.spec.ts` comprueba la capa de efectos con un contexto de canvas falso y `src/audio/__tests__/sfx.spec.ts` el sonido con un `AudioContext` falso. El generador aleatorio se inyecta para que sean deterministas.
 
 ---
 
 ## Tecnologías
 
-- **HTML5** — marcado y dos elementos `<canvas>` (tablero y vista previa).
-- **CSS3** — _flexbox_, variables de color, `backdrop-filter` y `box-shadow`.
-- **JavaScript (ES6+) vanilla** — `const`/`let`, _arrow functions_, _spread operator_, `Array.from`, _template literals_…
-- **Canvas 2D API** — para todo el renderizado del juego.
-- **`requestAnimationFrame`** — para el bucle de juego sincronizado con el navegador.
-
-**Sin dependencias.** No hay `package.json`, ni bundler, ni transpilador.
+- **Vue 3** (`<script setup>`, composables, `provide`/`inject`, `<Transition>`).
+- **TypeScript 7** (compilador nativo _tsgo_) en modo estricto, con `vue-tsc` para los componentes.
+- **Vite** como servidor de desarrollo y bundler, con **Vue DevTools** integradas.
+- **Vitest** para los tests del motor.
+- **Oxlint** y **Oxfmt** para lint y formato.
+- **Bun** como gestor de paquetes.
+- **Canvas 2D API** para todo el renderizado del juego.
 
 ---
 
@@ -156,28 +251,61 @@ Cuando una pieza recién generada ya colisiona al aparecer (`spawn`), se dispara
 
 ```
 03-tetris/
-├── index.html      # Estructura del DOM y canvas
-├── style.css       # Estilos del juego (dark theme)
-├── game.js         # Toda la lógica del Tetris (~300 líneas)
-└── README.md
+├── index.html                 # Punto de entrada de Vite
+├── src/
+│   ├── main.ts                # Monta la app
+│   ├── App.vue                # Layout principal
+│   ├── style.css              # Estilos globales y variables de tema
+│   ├── engine/
+│   │   ├── constants.ts       # Tablas: piezas, colores, puntuación, power-ups
+│   │   ├── game.ts            # Motor del juego (clase Game)
+│   │   ├── challenges.ts      # Modos de juego y desafíos
+│   │   ├── skills.ts          # Energía y habilidades
+│   │   └── __tests__/
+│   │       └── game.spec.ts   # Tests del motor (Vitest)
+│   ├── audio/
+│   │   ├── sfx.ts             # Sonidos sintetizados (Web Audio)
+│   │   └── __tests__/
+│   ├── render/
+│   │   ├── canvas.ts          # Dibujo del tablero y vistas previas
+│   │   ├── effects.ts         # Popups, partículas y ondas
+│   │   └── __tests__/         # Tests de los efectos
+│   ├── composables/
+│   │   ├── useGame.ts         # Puente motor ↔ Vue, bucle y teclado
+│   │   └── useTheme.ts        # Tema claro / oscuro y modo retro
+│   └── components/            # GameBoard, LeftPanel, SidePanel, PiecePreview, GameOverlay, ThemeToggle (tema + retro)
+├── env.d.ts
+├── vite.config.ts             # Vite + Vue + Vue DevTools, alias @/
+├── vitest.config.ts
+├── tsconfig.json              # Referencias a tsconfig.app / .node / .vitest
+├── .oxlintrc.json / .oxfmtrc.json
+└── package.json
 ```
 
 ---
 
 ## Personalización
 
-Algunos parámetros fáciles de tunear en `game.js`:
+Parámetros fáciles de ajustar en `src/engine/constants.ts`:
 
-| Constante      | Significado                              | Por defecto           |
-| -------------- | ---------------------------------------- | --------------------- |
-| `COLS`         | Columnas del tablero                     | `10`                  |
-| `ROWS`         | Filas del tablero                        | `20`                  |
-| `BLOCK`        | Tamaño en píxeles de cada celda          | `30`                  |
-| `COLORS`       | Paleta de colores por tipo de pieza      | 7 colores             |
-| `LINE_SCORES`  | Puntos por 1, 2, 3 o 4 líneas eliminadas | `[0,100,300,500,800]` |
-| `dropInterval` | Velocidad inicial de caída en ms         | `1000`                |
+| Constante               | Significado                                  | Por defecto           |
+| ----------------------- | -------------------------------------------- | --------------------- |
+| `COLS`                  | Columnas del tablero                         | `10`                  |
+| `ROWS`                  | Filas del tablero                            | `20`                  |
+| `BLOCK`                 | Tamaño en píxeles de cada celda              | `30`                  |
+| `COLORS`                | Paleta de colores por tipo de pieza          | 7 piezas + power-ups  |
+| `LINE_SCORES`           | Puntos por 1, 2, 3 o 4 líneas eliminadas     | `[0,100,300,500,800]` |
+| `INITIAL_DROP_INTERVAL` | Velocidad inicial de caída en ms             | `1000`                |
+| `LINES_PER_POWERUP`     | Líneas necesarias para el siguiente power-up | `8`                   |
+| `FREEZE_MS`             | Duración de Congelar en ms                   | `5000`                |
+| `PENTOMINO_CHANCE`      | Probabilidad de pentominó                    | `0.1`                 |
+| `HOLLOW_CHANCE`         | Probabilidad de la pieza hueca (reto)        | `0.04`                |
+| `TSPIN_SCORES`          | Puntos de un T-spin con 0, 1, 2 o 3 líneas   | `[400,800,1200,1600]` |
+| `MAX_COMBO_MULTIPLIER`  | Tope del multiplicador de combo              | `10`                  |
+| `B2B_MULTIPLIER`        | Bonificación Back-to-Back                    | `1.5`                 |
+| `PERFECT_CLEAR_SCORE`   | Puntos de un perfect clear (× nivel)         | `3000`                |
 
-> Si cambias `COLS`, `ROWS` o `BLOCK`, recuerda ajustar también `width` y `height` del `<canvas id="board">` en `index.html` para que coincida (`COLS × BLOCK` × `ROWS × BLOCK`).
+El tamaño del canvas se calcula a partir de `COLS`, `ROWS` y `BLOCK`, así que no hace falta tocar nada más.
 
 ---
 

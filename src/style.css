@@ -1,0 +1,665 @@
+:root {
+  --bg: #0f0f17;
+  --text: #e0e0e0;
+  --accent: #7aa2f7;
+  --title-glow: rgba(122, 162, 247, 0.4);
+  --canvas-bg: #1a1a25;
+  --canvas-border: #2a2a3a;
+  --board-shadow: rgba(0, 0, 0, 0.6);
+  --label: #555570;
+  --muted: #888;
+  --kbd-bg: #22223a;
+  --kbd-border: #3a3a5a;
+  --kbd-text: #aaa;
+  --overlay-bg: rgba(10, 10, 20, 0.75);
+  --danger: #e57373;
+  --btn-bg: #7aa2f7;
+  --btn-text: #0f0f17;
+  --btn-hover: #9bbdff;
+  --grid: #22222e;
+  --combo: #ff8a80;
+  --combo-glow: rgba(255, 138, 128, 0.5);
+  --b2b: #ffab40;
+  --win: #81c784;
+  --menu-bg: rgba(10, 10, 20, 0.9);
+  --energy: #ffd54f;
+}
+
+:root[data-theme='light'] {
+  --bg: #f2f3f8;
+  --text: #2a2b3a;
+  --accent: #3d59a1;
+  --title-glow: rgba(61, 89, 161, 0.25);
+  --canvas-bg: #ffffff;
+  --canvas-border: #c8cadb;
+  --board-shadow: rgba(60, 70, 120, 0.2);
+  --label: #6b6e8a;
+  --muted: #666;
+  --kbd-bg: #e6e8f4;
+  --kbd-border: #c0c4dc;
+  --kbd-text: #555;
+  --overlay-bg: rgba(240, 242, 250, 0.75);
+  --danger: #d32f2f;
+  --btn-bg: #3d59a1;
+  --btn-text: #ffffff;
+  --btn-hover: #5873c0;
+  --grid: #e3e5ef;
+  --combo: #d84315;
+  --combo-glow: rgba(216, 67, 21, 0.25);
+  --b2b: #ef6c00;
+  --win: #2e7d32;
+  --menu-bg: rgba(240, 242, 250, 0.94);
+  --energy: #f9a825;
+}
+
+/* Modo retro: consola 8-bit con paleta limitada. Va después de los temas y con
+   [data-theme] también, para ganarles sea cual sea el tema activo. */
+:root[data-style='retro'],
+:root[data-style='retro'][data-theme] {
+  --bg: #10102a;
+  --text: #fcfcfc;
+  --accent: #f8c838;
+  --title-glow: transparent;
+  --canvas-bg: #000;
+  --canvas-border: #fcfcfc;
+  --board-shadow: transparent;
+  --label: #8c8cdc;
+  --muted: #8c8cdc;
+  --kbd-bg: #000;
+  --kbd-border: #fcfcfc;
+  --kbd-text: #fcfcfc;
+  --overlay-bg: rgba(0, 0, 0, 0.8);
+  --danger: #f05050;
+  --btn-bg: #f8c838;
+  --btn-text: #000;
+  --btn-hover: #fce08c;
+  --grid: #000;
+  --combo: #f05050;
+  --combo-glow: transparent;
+  --b2b: #f8c838;
+  --win: #50d070;
+  --menu-bg: rgba(0, 0, 0, 0.92);
+  --energy: #50d070;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  user-select: none;
+}
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.title {
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: 10px;
+  padding-left: 10px; /* compensa el letter-spacing final */
+  color: var(--accent);
+  text-shadow: 0 0 20px var(--title-glow);
+  margin-bottom: 16px;
+}
+
+/* El overlay cubre solo el área de juego, no el título */
+.game-area {
+  position: relative;
+}
+
+.game-container {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+#board {
+  display: block;
+  border: 1px solid var(--canvas-border);
+  background: var(--canvas-bg);
+  border-radius: 4px;
+  box-shadow: 0 0 40px var(--board-shadow);
+}
+
+/* ---- Panel lateral ---- */
+.panel {
+  width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-top: 4px;
+}
+
+.panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--label);
+  font-weight: 600;
+}
+
+.value {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 1px;
+}
+
+.info {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* Dos secciones en la misma fila (LINES + LEVEL) */
+.panel-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* ---- Combo ---- */
+.combo-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+}
+
+.value.combo {
+  display: inline-block;
+  color: var(--muted);
+}
+
+.value.combo.active {
+  color: var(--combo);
+  text-shadow: 0 0 12px var(--combo-glow);
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--btn-text);
+  background: var(--b2b);
+  box-shadow: 0 0 10px var(--b2b);
+}
+
+/* Animación "pop": entra grande y se asienta; sale desvaneciéndose */
+.pop-enter-active {
+  animation: pop-in 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.pop-leave-active {
+  transition: opacity 0.1s ease;
+}
+
+.pop-leave-to {
+  opacity: 0;
+}
+
+@keyframes pop-in {
+  from {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.preview {
+  display: block;
+  border: 1px solid var(--canvas-border);
+  background: var(--canvas-bg);
+  border-radius: 4px;
+}
+
+/* ---- Controles ---- */
+.controls ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.controls li {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+kbd {
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--kbd-text);
+}
+
+/* ---- Overlay ---- */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--overlay-bg);
+  backdrop-filter: blur(4px);
+  border-radius: 4px;
+}
+
+/* Transición de entrada/salida del overlay (<Transition name="fade">) */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.overlay-box {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.overlay-title {
+  text-align: center;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: var(--danger);
+}
+
+.overlay-score {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  color: var(--accent);
+}
+
+.restart-btn {
+  margin-top: 8px;
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  border: none;
+  border-radius: 6px;
+  padding: 10px 28px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: background 0.15s;
+}
+
+.restart-btn:hover {
+  background: var(--btn-hover);
+}
+
+.restart-btn.secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--canvas-border);
+}
+
+.restart-btn.secondary:hover {
+  border-color: var(--accent);
+  background: transparent;
+}
+
+.overlay-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.overlay-title--accent {
+  color: var(--accent);
+}
+
+.overlay-title--win {
+  color: var(--win);
+  text-shadow: 0 0 18px var(--win);
+  animation: win-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes win-pulse {
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+.overlay-sub {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* La pantalla de menú tapa más el tablero para que se lea bien */
+.overlay--menu {
+  background: var(--menu-bg);
+}
+
+/* ---- Menú de modos ---- */
+.mode-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 340px;
+}
+
+.mode-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  text-align: left;
+  background: var(--canvas-bg);
+  color: var(--text);
+  border: 1px solid var(--canvas-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.mode-btn:hover,
+.mode-btn:focus-visible {
+  transform: translateX(4px);
+  border-color: var(--accent);
+  box-shadow: 0 0 14px var(--title-glow);
+  outline: none;
+}
+
+.mode-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mode-name {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.mode-desc {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Cambio entre pantallas del overlay */
+.slide-enter-active,
+.slide-leave-active {
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+
+.slide-enter-from {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.slide-leave-to {
+  opacity: 0;
+  transform: translateY(-12px);
+}
+
+/* ---- Panel izquierdo ---- */
+.panel--left {
+  width: 150px;
+}
+
+.objective-name {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text);
+}
+
+/* ---- Toggle de tema ---- */
+.toggles {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 8px;
+}
+
+#theme-toggle,
+#retro-toggle {
+  background: var(--canvas-bg);
+  color: var(--text);
+  border: 1px solid var(--canvas-border);
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#theme-toggle:hover:not(:disabled),
+#retro-toggle:hover {
+  border-color: var(--accent);
+}
+
+#theme-toggle:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ---- Energía y habilidades ---- */
+.energy-bar {
+  position: relative;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--canvas-bg);
+  border: 1px solid var(--canvas-border);
+  overflow: hidden;
+}
+
+.energy-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ffb74d, var(--energy));
+  transition: width 0.35s ease;
+}
+
+.energy-bar.full {
+  border-color: var(--energy);
+  animation: energy-pulse 1s ease-in-out infinite;
+}
+
+/* Brillo que recorre la barra llena */
+.energy-bar.full .energy-fill {
+  background: linear-gradient(90deg, var(--energy), #fff59d, var(--energy));
+  background-size: 200% 100%;
+  animation: energy-shine 1.4s linear infinite;
+}
+
+@keyframes energy-pulse {
+  50% {
+    box-shadow: 0 0 12px var(--energy);
+  }
+}
+
+@keyframes energy-shine {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.energy-hint {
+  font-size: 12px;
+}
+
+.overlay-title--energy {
+  color: var(--energy);
+  text-shadow: 0 0 14px var(--energy);
+}
+
+.skill-btn:hover,
+.skill-btn:focus-visible {
+  border-color: var(--skill);
+  box-shadow: 0 0 14px var(--skill);
+}
+
+.skill-btn.unavailable {
+  opacity: 0.45;
+}
+
+.skill-icon {
+  font-size: 20px;
+  width: 24px;
+  text-align: center;
+}
+
+.queue-strip {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+/* Tinte del tablero con efectos de tiempo activos */
+#board {
+  transition:
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
+}
+
+#board.board--slow {
+  border-color: #81c784;
+  box-shadow: 0 0 22px rgba(129, 199, 132, 0.55);
+}
+
+#board.board--frozen {
+  border-color: #b3e5fc;
+  box-shadow: 0 0 22px rgba(179, 229, 252, 0.7);
+}
+
+/* ---- HOLD ---- */
+.hold-slot .preview {
+  transition:
+    opacity 0.25s ease,
+    filter 0.25s ease;
+}
+
+.hold-slot.locked .preview {
+  opacity: 0.35;
+  filter: grayscale(1);
+}
+
+/* ---- Marco del tablero ---- */
+.board-frame {
+  position: relative;
+  display: flex;
+}
+
+/* ---- Modo retro: consola 8-bit ---- */
+:root[data-style='retro'] body,
+:root[data-style='retro'] button,
+:root[data-style='retro'] kbd,
+:root[data-style='retro'] .value {
+  font-family: 'Press Start 2P', monospace;
+  /* la fuente bitmap es muy ancha: se ajusta a la altura de letra de las demás */
+  font-size-adjust: 0.42;
+  -webkit-font-smoothing: none;
+}
+
+/* Sin esquinas redondeadas: todo son píxeles */
+:root[data-style='retro'] *,
+:root[data-style='retro'] *::before,
+:root[data-style='retro'] *::after {
+  border-radius: 0 !important;
+}
+
+:root[data-style='retro'] canvas {
+  image-rendering: pixelated;
+}
+
+:root[data-style='retro'] .preview {
+  border: 3px solid var(--canvas-border);
+  box-shadow: 0 0 0 3px #000;
+}
+
+/* Marco en píxeles del tablero: bandas duras alternas, sin desenfoque */
+:root[data-style='retro'] #board {
+  border: 3px solid #000;
+  box-shadow:
+    0 0 0 3px var(--canvas-border),
+    0 0 0 6px #000,
+    0 0 0 9px var(--label),
+    0 0 0 12px #000;
+}
+
+/* Líneas de barrido del CRT por encima del tablero */
+.board-frame.retro::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.25) 0,
+    rgba(0, 0, 0, 0.25) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+:root[data-style='retro'] .energy-fill,
+:root[data-style='retro'] .energy-bar.full .energy-fill {
+  background: var(--energy);
+  animation: none;
+}
+
+:root[data-style='retro'] #board.board--slow,
+:root[data-style='retro'] #board.board--frozen {
+  box-shadow:
+    0 0 0 3px var(--accent),
+    0 0 0 6px #000,
+    0 0 0 9px var(--accent),
+    0 0 0 12px #000;
+}
+
+:root[data-style='retro'] .skill-btn:hover,
+:root[data-style='retro'] .skill-btn:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent);
+}
