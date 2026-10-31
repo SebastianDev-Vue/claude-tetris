@@ -5,9 +5,12 @@ import { MODES, formatTime, type GameMode } from '../engine/challenges'
 import { SKILLS, type SkillId } from '../engine/skills'
 import { Effects } from '../render/effects'
 import { Sfx } from '../audio/sfx'
+import { isTypingTarget } from './useTheme'
 
 // Tope del dt por frame: al volver de una pestaña oculta rAF entrega minutos de golpe
 const MAX_FRAME_MS = 100
+// Tras reanudar se ignoran las teclas de juego un instante para evitar movimientos accidentales
+const RESUME_GRACE_MS = 200
 
 type FrameListener = (now: number) => void
 
@@ -20,6 +23,8 @@ export interface Hud {
   gameOver: boolean
   /** Fijados consecutivos con líneas (el panel muestra el multiplicador desde 2). */
   combo: number
+  /** Mejor combo de la partida (tabla de récords). */
+  maxCombo: number
   b2b: boolean
   muted: boolean
   /** Pantalla de selección de modo visible (el juego no avanza). */
@@ -48,6 +53,8 @@ export interface Hud {
   canUndo: boolean
   /** Tiempo de juego formateado (m:ss). */
   time: string
+  /** Nivel con el que empezará la próxima partida. */
+  startLevel: number
 }
 
 export interface GameContext {
@@ -66,6 +73,8 @@ export interface GameContext {
   /** Vuelve a la pantalla de selección de modo. */
   openMenu: () => void
   togglePause: () => void
+  /** Nivel inicial de la próxima partida (1–10). */
+  setStartLevel: (level: number) => void
   /** Usa una habilidad desde el menú (lo cierra y reanuda). */
   useSkill: (id: SkillId) => void
   closeSkillMenu: () => void
@@ -113,6 +122,7 @@ export function useGame(): GameContext {
     paused: false,
     gameOver: false,
     combo: 0,
+    maxCombo: 0,
     b2b: false,
     muted: false,
     menu: true, // la app arranca en la pantalla de selección de modo
@@ -131,10 +141,14 @@ export function useGame(): GameContext {
     holdUsed: false,
     holdFits: true,
     canUndo: false,
+    startLevel: 1,
   })
   const listeners = new Set<FrameListener>()
   let animId = 0
   let lastTime = 0
+  let resumedAt = -Infinity
+  /** Tras reanudar, la auto-repetición de una tecla ya pulsada no cuenta hasta una pulsación nueva. */
+  let ignoreRepeat = false
 
   function syncHud(): void {
     // Asignar el mismo valor primitivo no dispara re-render en Vue
@@ -145,6 +159,7 @@ export function useGame(): GameContext {
     hud.paused = game.paused
     hud.gameOver = game.gameOver
     hud.combo = game.combo
+    hud.maxCombo = game.maxCombo
     hud.b2b = game.b2b
     hud.muted = sfx.muted
     hud.mode = game.mode
@@ -161,6 +176,7 @@ export function useGame(): GameContext {
     hud.holdUsed = game.holdUsed
     hud.holdFits = game.holdFits
     hud.canUndo = game.canUndo
+    hud.startLevel = game.startLevel
   }
 
   function frame(now: number): void {
@@ -192,6 +208,15 @@ export function useGame(): GameContext {
 
   function togglePause(): void {
     game.togglePause()
+    if (!game.paused) {
+      resumedAt = performance.now()
+      ignoreRepeat = true
+    }
+    syncHud()
+  }
+
+  function setStartLevel(level: number): void {
+    game.setStartLevel(level)
     syncHud()
   }
 
@@ -226,6 +251,7 @@ export function useGame(): GameContext {
   }
 
   function onKeydown(e: KeyboardEvent): void {
+    if (isTypingTarget(e.target)) return // escribir el nombre del récord no es jugar
     sfx.unlock() // el audio solo puede activarse tras un gesto del usuario
     if (e.code === 'KeyM') {
       sfx.toggleMute()
@@ -233,16 +259,20 @@ export function useGame(): GameContext {
     }
     if (hud.menu) return onMenuKey(e)
     if (hud.skillMenu) return onSkillKey(e)
+    if (e.code === 'KeyP' || e.code === 'Escape') {
+      if (!e.repeat) togglePause()
+      return
+    }
+    // Con el menú de pausa abierto (o recién cerrado) las teclas de juego no llegan al motor
+    if (game.paused || performance.now() - resumedAt < RESUME_GRACE_MS) return
+    if (e.repeat && ignoreRepeat) return
+    if (!e.repeat) ignoreRepeat = false
     switch (e.code) {
       case 'KeyC':
         if (!e.repeat) game.holdPiece() // mantener C pulsada no debe guardar cada pieza nueva
         break
       case 'KeyE':
         openSkillMenu()
-        break
-      case 'KeyP':
-      case 'Escape':
-        game.togglePause()
         break
       case 'ArrowLeft':
         game.moveLeft()
@@ -294,6 +324,7 @@ export function useGame(): GameContext {
     restart,
     openMenu,
     togglePause,
+    setStartLevel,
     useSkill,
     closeSkillMenu,
   }

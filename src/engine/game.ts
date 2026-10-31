@@ -147,6 +147,7 @@ interface Snapshot {
   level: number
   dropInterval: number
   combo: number
+  maxCombo: number
   b2b: boolean
   linesToPowerUp: number
   pendingPowerUp: boolean
@@ -155,6 +156,9 @@ interface Snapshot {
   pieceType: number
   hold: Piece | null
 }
+
+const levelInterval = (level: number): number =>
+  Math.max(100, INITIAL_DROP_INTERVAL - (level - 1) * 90)
 
 const clonePiece = (p: Piece): Piece => ({ ...p, shape: p.shape.map((row) => [...row]) })
 
@@ -166,6 +170,8 @@ export class Game {
   score = 0
   lines = 0
   level = 1
+  /** Nivel con el que empieza la próxima partida (1–10); lo aplica reset(). */
+  startLevel = 1
   paused = false
   gameOver = false
   dropInterval = INITIAL_DROP_INTERVAL
@@ -178,6 +184,8 @@ export class Game {
   frozenMs = 0
   /** Fijados consecutivos que han limpiado líneas (0 = sin combo). */
   combo = 0
+  /** Mejor combo de la partida (para la tabla de récords). */
+  maxCombo = 0
   /** El último fijado con líneas fue «difícil» (Tetris o T-spin): el siguiente puede ser B2B. */
   b2b = false
   /** El último movimiento de la pieza actual fue una rotación (para detectar T-spin). */
@@ -252,6 +260,11 @@ export class Game {
     return this.mode === 'invisible' && !this.gameOver
   }
 
+  /** Fija el nivel inicial de la próxima partida (acotado a 1–10). */
+  setStartLevel(level: number): void {
+    this.startLevel = Math.min(10, Math.max(1, Math.round(level)))
+  }
+
   /** Único camino de reinicio. Sin argumento repite el modo actual. */
   reset(mode: GameMode = this.mode): void {
     this.mode = mode
@@ -262,10 +275,10 @@ export class Game {
     this.board = createBoard()
     this.score = 0
     this.lines = 0
-    this.level = 1
+    this.level = this.startLevel
     this.paused = false
     this.gameOver = false
-    this.dropInterval = INITIAL_DROP_INTERVAL
+    this.dropInterval = levelInterval(this.level)
     this.dropAccum = 0
     this.linesToPowerUp = LINES_PER_POWERUP
     this.pendingPowerUp = false
@@ -274,6 +287,7 @@ export class Game {
     this.combo = 0
     this.b2b = false
     this.lastMoveRotate = false
+    this.maxCombo = 0
     this.energy = 0
     this.peekPieces = 0
     this.slowMs = 0
@@ -607,6 +621,7 @@ export class Game {
     ]
     this.lines += cleared
     this.combo++
+    this.maxCombo = Math.max(this.maxCombo, this.combo)
     this.addEnergy(cleared * ENERGY_PER_LINE + (cleared >= 4 || tspin ? ENERGY_BONUS : 0))
     // Los comodines que queden se eliminan con cualquier limpieza de líneas (antes de
     // puntuar, para que cuenten en un posible perfect clear)
@@ -618,9 +633,9 @@ export class Game {
     }
     if (cleared >= 4) this.pendingReward = true
     const prevLevel = this.level
-    this.level = Math.floor(this.lines / 10) + 1
+    this.level = Math.max(this.startLevel, Math.floor(this.lines / 10) + 1)
     if (this.level > prevLevel) this.onLevelUp(prevLevel)
-    this.dropInterval = Math.max(100, INITIAL_DROP_INTERVAL - (this.level - 1) * 90)
+    this.dropInterval = levelInterval(this.level)
     this.linesToPowerUp -= cleared
     if (this.linesToPowerUp <= 0) {
       this.linesToPowerUp += LINES_PER_POWERUP
@@ -688,6 +703,7 @@ export class Game {
       level: this.level,
       dropInterval: this.dropInterval,
       combo: this.combo,
+      maxCombo: this.maxCombo,
       b2b: this.b2b,
       linesToPowerUp: this.linesToPowerUp,
       pendingPowerUp: this.pendingPowerUp,
@@ -757,6 +773,7 @@ export class Game {
     this.level = s.level
     this.dropInterval = s.dropInterval
     this.combo = s.combo
+    this.maxCombo = s.maxCombo
     this.b2b = s.b2b
     this.linesToPowerUp = s.linesToPowerUp
     this.pendingPowerUp = s.pendingPowerUp

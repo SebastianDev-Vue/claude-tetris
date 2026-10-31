@@ -19,7 +19,7 @@ Implementación de **Tetris** con **Vue 3 + TypeScript**, renderizado en HTML5 C
   - [Modo desafío](#modo-desafío)
   - [Energía y habilidades](#energía-y-habilidades)
   - [Hold](#hold)
-  - [Modo retro](#modo-retro)
+  - [Skins](#skins)
 - [Cómo ejecutar el juego](#cómo-ejecutar-el-juego)
 - [Controles](#controles)
 - [Cómo funciona](#cómo-funciona)
@@ -50,7 +50,7 @@ Es una versión jugable de Tetris con todas las mecánicas que esperarías:
 - **Modo desafío**: Maratón y 5 desafíos con objetivos (ver abajo).
 - **Habilidades**: barra de energía que se carga limpiando líneas y se gasta en 5 habilidades.
 - **Hold**: guarda una pieza para más tarde (una vez por turno).
-- **Modo retro**: aspecto de consola 8-bit con paleta que cambia por nivel (tecla `R`).
+- **Skins**: Retro, Neón, Pastel, Pixel art y 8-bit; se recuerda la elegida (tecla `R`).
 - **Power-ups**: cada 8 líneas aparece una pieza especial de 1 bloque (ver abajo).
 - **Piezas no estándar**: pentominós, piezas de reto y recompensas (ver abajo), con halo pulsante y animaciones al entrar en juego.
 
@@ -127,16 +127,24 @@ Cada línea limpiada carga **+10** de energía, y un Tetris o un T-spin con lín
 
 Pulsa **`C`** para guardar la pieza actual en el slot **HOLD** (panel izquierdo). Si ya había una guardada, se intercambian. Las piezas salen siempre desde arriba y con su orientación inicial. Solo puede usarse **una vez por turno**: el slot se atenúa hasta que se fija la pieza. Los power-ups también se pueden guardar. Si la pieza que entraría no cabe, el hold se rechaza con el aviso «NO DISPONIBLE». (No se usa `Shift`: en Windows, pulsarlo 5 veces seguidas abre el aviso de «Teclas especiales».)
 
-### Modo retro
+### Skins
 
-El botón **Modo retro** (arriba a la derecha) o la tecla **`R`** dan al juego un aspecto de consola 8-bit:
+El selector **Skin** (arriba a la derecha) o la tecla **`R`** (pasa a la siguiente) cambian el aspecto de los bloques, en el tablero y en las vistas previas. La elección se guarda en el navegador y se recupera al volver.
+
+- **Retro** (por defecto): bloques cuadrados de color plano.
+- **Neón**: fondo negro y bloques con borde luminoso y halo.
+- **Pastel**: colores suaves y esquinas redondeadas.
+- **Pixel art**: textura de tablero de ajedrez sobre cada bloque.
+- **8-bit**: aspecto de consola 8-bit (abajo).
+
+En la skin 8-bit:
 
 - Los bloques se dibujan en píxeles gruesos, con contorno negro, luz, sombra y un destello en la esquina.
 - La paleta es limitada (tres colores) y **cambia con cada nivel**; hay 10 paletas que rotan. Los power-ups llevan su letra (`B` Bomba, `R` Rayo, `T` Tinte, `G` Gravedad, `F` Congelar), el comodín es blanco con `*`, y la basura y los bloques fijos son grises.
 - Los textos usan una fuente bitmap pixelada. No hay rejilla, pieza fantasma ni halos. Los efectos (popups, chispas, ondas) salen en un solo color de la paleta del nivel.
 - El tablero tiene un marco de bandas en píxeles y, encima, líneas de barrido de monitor CRT.
 
-Se puede activar en cualquier momento: en el menú, jugando, en pausa o al terminar. Mientras está activo, el botón de tema claro/oscuro se desactiva, y al salir se recupera el tema que tenías.
+Se puede cambiar en cualquier momento: en el menú, jugando, en pausa o al terminar. Con 8-bit o Neón el botón de tema claro/oscuro se desactiva, y al salir se recupera el tema que tenías.
 
 ---
 
@@ -173,7 +181,7 @@ bun run preview    # sirve dist/ localmente
 | `P` o `Esc` | Pausa (con opciones Continuar / Reiniciar / Menú) |
 | `1`–`6`   | Elegir modo en el menú            |
 | `E`       | Menú de habilidades (con la barra de energía llena) |
-| `R`       | Activar / desactivar el modo retro |
+| `R`       | Pasar a la siguiente skin          |
 
 ---
 
@@ -272,7 +280,7 @@ Los tests (`src/engine/__tests__/game.spec.ts`) cubren el motor: colisiones, rot
 │   │   └── __tests__/         # Tests de los efectos
 │   ├── composables/
 │   │   ├── useGame.ts         # Puente motor ↔ Vue, bucle y teclado
-│   │   └── useTheme.ts        # Tema claro / oscuro y modo retro
+│   │   └── useTheme.ts        # Tema claro / oscuro y skins
 │   └── components/            # GameBoard, LeftPanel, SidePanel, PiecePreview, GameOverlay, ThemeToggle (tema + retro)
 ├── env.d.ts
 ├── vite.config.ts             # Vite + Vue + Vue DevTools, alias @/

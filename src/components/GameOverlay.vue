@@ -1,10 +1,23 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { MODES } from '../engine/challenges'
 import { SKILLS, type SkillId } from '../engine/skills'
 import { useGameContext } from '../composables/useGame'
+import { NAME_MAX_LENGTH, useRecords } from '../composables/useRecords'
+import RecordsTable from './RecordsTable.vue'
 
-const { hud, start, restart, openMenu, togglePause, useSkill, closeSkillMenu } = useGameContext()
+const { hud, start, restart, openMenu, togglePause, setStartLevel, useSkill, closeSkillMenu } =
+  useGameContext()
+
+/** Lista de teclas desplegada dentro del menú de pausa. */
+const showControls = ref(false)
+
+/** Aplica el nivel elegido y suelta el foco: las flechas no deben seguir cambiándolo. */
+function pickLevel(e: Event): void {
+  const select = e.target as HTMLSelectElement
+  setStartLevel(Number(select.value))
+  select.blur()
+}
 
 type Screen = 'menu' | 'over' | 'skills' | 'pause' | null
 
@@ -26,6 +39,43 @@ function run(action: () => void, e: MouseEvent): void {
 function unavailable(id: SkillId): boolean {
   return (id === 'undo' && !hud.canUndo) || (id === 'hold' && (!hud.holdUsed || !hud.holdFits))
 }
+
+const { records, bestCombo, maxLines, qualifies, save, clear } = useRecords()
+const playerName = ref('')
+/** Fila guardada en esta partida (-1 = aún sin guardar). */
+const savedIndex = ref(-1)
+const canSave = computed(() => savedIndex.value < 0 && qualifies(hud.score))
+
+// Cada game over empieza sin guardar
+watch(
+  () => hud.gameOver,
+  (over) => {
+    if (over) savedIndex.value = -1
+  },
+)
+
+function saveRecord(): void {
+  if (!canSave.value) return
+  savedIndex.value = save({
+    name: playerName.value,
+    score: hud.score,
+    lines: hud.lines,
+    maxCombo: hud.maxCombo,
+    mode: hud.mode,
+    date: new Date().toISOString(),
+  })
+}
+
+function clearRecords(): void {
+  ;(document.activeElement as HTMLElement | null)?.blur() // que Space no lo repita al jugar
+  if (confirm('¿Borrar todos los récords?')) {
+    clear()
+    savedIndex.value = -1
+  }
+}
+
+/** Enfoca el campo del nombre al aparecer. */
+const vFocus = { mounted: (el: HTMLElement) => el.focus() }
 </script>
 
 <template>
@@ -46,6 +96,13 @@ function unavailable(id: SkillId): boolean {
               </button>
             </li>
           </ul>
+          <RecordsTable
+            :records="records"
+            :best-combo="bestCombo"
+            :max-lines="maxLines"
+            :highlight="-1"
+            @clear="clearRecords"
+          />
         </div>
 
         <!-- Fin de partida -->
@@ -58,6 +115,23 @@ function unavailable(id: SkillId): boolean {
           <p class="overlay-score">
             Puntuación: {{ hud.score.toLocaleString() }} · Tiempo: {{ hud.time }}
           </p>
+          <div v-if="canSave" class="record-form">
+            <p class="record-qualifies">¡Entras en el top 5! Escribe tu nombre:</p>
+            <input
+              v-model="playerName"
+              v-focus
+              class="record-input"
+              type="text"
+              :maxlength="NAME_MAX_LENGTH"
+              placeholder="Jugador"
+              aria-label="Nombre del jugador"
+              @keydown.enter="saveRecord"
+            />
+            <button class="restart-btn" type="button" @click="run(saveRecord, $event)">
+              Guardar
+            </button>
+          </div>
+          <p v-else-if="savedIndex >= 0" class="record-new-msg">¡Nuevo récord!</p>
           <div class="overlay-actions">
             <button class="restart-btn" type="button" @click="run(restart, $event)">
               Reiniciar
@@ -66,6 +140,13 @@ function unavailable(id: SkillId): boolean {
               Menú
             </button>
           </div>
+          <RecordsTable
+            :records="records"
+            :best-combo="bestCombo"
+            :max-lines="maxLines"
+            :highlight="savedIndex"
+            @clear="clearRecords"
+          />
         </div>
 
         <!-- Habilidades (barra de energía llena) -->
@@ -99,7 +180,7 @@ function unavailable(id: SkillId): boolean {
           <p class="overlay-title">PAUSA</p>
           <div class="overlay-actions">
             <button class="restart-btn" type="button" @click="run(togglePause, $event)">
-              Continuar
+              Reanudar
             </button>
             <button class="restart-btn secondary" type="button" @click="run(restart, $event)">
               Reiniciar
@@ -108,6 +189,31 @@ function unavailable(id: SkillId): boolean {
               Menú
             </button>
           </div>
+          <label class="pause-level">
+            Nivel inicial
+            <select class="restart-btn secondary" :value="hud.startLevel" @change="pickLevel">
+              <option v-for="n in 10" :key="n" :value="n">{{ n }}</option>
+            </select>
+          </label>
+          <p class="pause-hint">Se aplica al reiniciar o al empezar otra partida</p>
+          <button
+            class="restart-btn secondary"
+            type="button"
+            :aria-expanded="showControls"
+            @click="run(() => (showControls = !showControls), $event)"
+          >
+            {{ showControls ? 'Ocultar controles' : 'Ver controles' }}
+          </button>
+          <ul v-if="showControls" class="pause-controls">
+            <li><kbd>←</kbd><kbd>→</kbd> mover</li>
+            <li><kbd>↑</kbd><kbd>X</kbd> rotar</li>
+            <li><kbd>↓</kbd> bajar</li>
+            <li><kbd>Space</kbd> caída</li>
+            <li><kbd>C</kbd> hold</li>
+            <li><kbd>E</kbd> habilidades</li>
+            <li><kbd>P</kbd><kbd>Esc</kbd> pausa</li>
+            <li><kbd>M</kbd> sonido: {{ hud.muted ? 'off' : 'on' }}</li>
+          </ul>
         </div>
       </Transition>
     </div>

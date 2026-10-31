@@ -5,6 +5,7 @@
     "": {
       "name": "tetris",
       "dependencies": {
+        "@fontsource-variable/orbitron": "^5.3.0",
         "@fontsource/press-start-2p": "^5.3.0",
         "vue": "^3.5.44",
       },
@@ -110,6 +111,8 @@
     "@csstools/css-tokenizer": ["@csstools/css-tokenizer@4.0.2", "", {}, "sha512-OoKoR0f76dCY666JlcbhmVTs2drYj1GUXZTYTcbUgJjh9Nv41aFfZ21bPQTERm5+L5cBDo466NltB2lplS5GBw=="],
 
     "@exodus/bytes": ["@exodus/bytes@1.16.0", "", { "peerDependencies": { "@noble/hashes": "^1.8.0 || ^2.0.0" }, "optionalPeers": ["@noble/hashes"] }, "sha512-IcpW84uEn3N7ETtNZMlxKhfl6Pec8rUNGOTBtWbK1FKhJxIFAptZyVrvVRVBimAJxJCgc3PxepxkdWWG4DVzfA=="],
+
+    "@fontsource-variable/orbitron": ["@fontsource-variable/orbitron@5.3.0", "", {}, "sha512-KwW0YX1DJNqF0v86W1hZonuauypCFaltGdpB6qwCeu5bUyHoFpeZ84aAjChZSRF7RWZFithg/il0nMwYxJgqDA=="],
 
     "@fontsource/press-start-2p": ["@fontsource/press-start-2p@5.3.0", "", {}, "sha512-gxWFxdeDglPhEYSwEeooomcaFK8kSQYLQwVxfnOJeYRj2sPEHXjpVtFgEaYfqzOjuAJGrIcJOipu2KY5YkbyuQ=="],
 
