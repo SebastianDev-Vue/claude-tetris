@@ -46,7 +46,6 @@ Es una versión jugable de Tetris con todas las mecánicas que esperarías:
 - **Sistema de puntuación** clásico (100 / 300 / 500 / 800 multiplicado por nivel) con **combos, T-spin, Back-to-Back y perfect clear** (ver abajo).
 - **Niveles** que aumentan cada 10 líneas y aceleran la caída.
 - **Pausa** y **Game Over** con opción de reinicio.
-- **Tema claro / oscuro**.
 - **Modo desafío**: Maratón y 5 desafíos con objetivos (ver abajo).
 - **Habilidades**: barra de energía que se carga limpiando líneas y se gasta en 5 habilidades.
 - **Hold**: guarda una pieza para más tarde (una vez por turno).
@@ -144,7 +143,7 @@ En la skin 8-bit:
 - Los textos usan una fuente bitmap pixelada. No hay rejilla, pieza fantasma ni halos. Los efectos (popups, chispas, ondas) salen en un solo color de la paleta del nivel.
 - El tablero tiene un marco de bandas en píxeles y, encima, líneas de barrido de monitor CRT.
 
-Se puede cambiar en cualquier momento: en el menú, jugando, en pausa o al terminar. Con 8-bit o Neón el botón de tema claro/oscuro se desactiva, y al salir se recupera el tema que tenías.
+Se puede cambiar en cualquier momento: en el menú, jugando, en pausa o al terminar.
 
 ---
 
@@ -197,8 +196,8 @@ El código se divide en tres capas que no se mezclan:
 2. **Render** (`src/render/`): `canvas.ts` dibuja el tablero, la pieza fantasma y las vistas previas; `effects.ts` gestiona los efectos pasajeros (textos flotantes, partículas y ondas) a partir de los eventos del motor.
 3. **Interfaz Vue** (`src/composables/`, `src/components/`):
    - `useGame()` crea el motor, el único bucle `requestAnimationFrame`, los atajos de teclado y una copia reactiva (`hud`) de los datos que muestra el panel.
-   - `useTheme()` gestiona el tema claro/oscuro.
-   - Componentes: `GameBoard` (canvas del tablero), `LeftPanel` (objetivo, tiempo, controles), `SidePanel` (puntuación, combo, siguiente pieza), `PiecePreview`, `GameOverlay` (menú de modos, pausa y fin de partida con transiciones) y `ThemeToggle` (botones de tema y modo retro).
+   - `useTheme()` gestiona la skin (el juego usa siempre tema oscuro).
+   - Componentes: `GameBoard` (canvas del tablero), `LeftPanel` (objetivo, tiempo, controles), `SidePanel` (puntuación, combo, siguiente pieza), `PiecePreview`, `GameOverlay` (menú de modos, pausa y fin de partida con transiciones) y `ThemeToggle` (selector de skin).
 
 Algunas decisiones de diseño:
 
@@ -263,7 +262,7 @@ Los tests (`src/engine/__tests__/game.spec.ts`) cubren el motor: colisiones, rot
 ├── src/
 │   ├── main.ts                # Monta la app
 │   ├── App.vue                # Layout principal
-│   ├── style.css              # Estilos globales y variables de tema
+│   ├── style.css              # Estilos globales y variables de color
 │   ├── engine/
 │   │   ├── constants.ts       # Tablas: piezas, colores, puntuación, power-ups
 │   │   ├── game.ts            # Motor del juego (clase Game)
@@ -280,8 +279,8 @@ Los tests (`src/engine/__tests__/game.spec.ts`) cubren el motor: colisiones, rot
 │   │   └── __tests__/         # Tests de los efectos
 │   ├── composables/
 │   │   ├── useGame.ts         # Puente motor ↔ Vue, bucle y teclado
-│   │   └── useTheme.ts        # Tema claro / oscuro y skins
-│   └── components/            # GameBoard, LeftPanel, SidePanel, PiecePreview, GameOverlay, ThemeToggle (tema + retro)
+│   │   └── useTheme.ts        # Skins
+│   └── components/            # GameBoard, LeftPanel, SidePanel, PiecePreview, GameOverlay, ThemeToggle (selector de skin)
 ├── env.d.ts
 ├── vite.config.ts             # Vite + Vue + Vue DevTools, alias @/
 ├── vitest.config.ts

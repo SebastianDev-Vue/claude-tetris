@@ -11,18 +11,12 @@ import {
 } from 'vue'
 import { SKINS, type Skin } from '../render/canvas'
 
-export type Theme = 'dark' | 'light'
-
 export interface ThemeContext {
-  theme: Ref<Theme>
   /** Skin de los bloques (y del marco, vía `data-skin`); se guarda en localStorage. */
   skin: Ref<Skin>
-  /** Skin 8-bit (consola retro): sustituye al tema mientras está activa. */
+  /** Skin 8-bit (consola retro). */
   retro: ComputedRef<boolean>
-  /** El tema claro/oscuro no aplica con las skins 8-bit y neón. */
-  themeLocked: ComputedRef<boolean>
   gridColor: Ref<string>
-  toggleTheme: () => void
   setSkin: (value: Skin) => void
   cycleSkin: () => void
 }
@@ -55,23 +49,20 @@ function loadSkin(): Skin {
 }
 
 /**
- * Tema claro/oscuro vía `data-theme` en <html> y skin vía `data-skin` (la 8-bit además
+ * Skin vía `data-skin` en <html> (la 8-bit además
  * pone `data-style="retro"`). El canvas no lee CSS, así que el color de la rejilla se copia
- * de la variable --grid cada vez que cambia el tema o la skin, y los componentes de canvas
+ * de la variable --grid cada vez que cambia la skin, y los componentes de canvas
  * leen `skin` en cada frame. La tecla R pasa a la siguiente skin en cualquier pantalla.
  */
 export function useTheme(): ThemeContext {
-  const theme = ref<Theme>('dark')
   const skin = ref<Skin>(loadSkin())
   const retro = computed(() => skin.value === '8bit')
-  const themeLocked = computed(() => skin.value === '8bit' || skin.value === 'neon')
   const gridColor = ref('#22222e')
 
   watch(
-    [theme, skin],
-    ([themeValue, skinValue]) => {
+    skin,
+    (skinValue) => {
       const root = document.documentElement
-      root.dataset.theme = themeValue
       root.dataset.skin = skinValue
       if (skinValue === '8bit') root.dataset.style = 'retro'
       else delete root.dataset.style
@@ -87,11 +78,6 @@ export function useTheme(): ThemeContext {
       // sin almacenamiento la skin solo dura esta sesión
     }
   })
-
-  function toggleTheme(): void {
-    if (themeLocked.value) return // el tema no aplica: se recupera al cambiar de skin
-    theme.value = theme.value === 'light' ? 'dark' : 'light'
-  }
 
   function setSkin(value: Skin): void {
     skin.value = value
@@ -109,5 +95,5 @@ export function useTheme(): ThemeContext {
   onMounted(() => window.addEventListener('keydown', onKeydown))
   onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
-  return { theme, skin, retro, themeLocked, gridColor, toggleTheme, setSkin, cycleSkin }
+  return { skin, retro, gridColor, setSkin, cycleSkin }
 }

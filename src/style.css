@@ -1,6 +1,6 @@
 /* ==========================================================================
    Tokens de diseño
-   Colores por tema; espaciado, radios, tipografía y movimiento son comunes.
+   Colores (tema oscuro único; las skins Neón y 8-bit los redefinen); espaciado, radios, tipografía y movimiento son comunes.
    ========================================================================== */
 :root {
   /* Tipografía */
@@ -28,7 +28,7 @@
   --dur-fast: 0.15s;
   --dur-med: 0.25s;
 
-  /* ---- Tema oscuro (por defecto) ---- */
+  /* ---- Colores ---- */
   --bg: #07070f;
   --bg-glow-1: rgba(122, 92, 255, 0.22);
   --bg-glow-2: rgba(0, 200, 255, 0.16);
@@ -73,52 +73,8 @@
   --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
 }
 
-:root[data-theme='light'] {
-  --bg: #eef0f8;
-  --bg-glow-1: rgba(120, 100, 255, 0.18);
-  --bg-glow-2: rgba(0, 170, 255, 0.14);
-  --bg-glow-3: rgba(255, 90, 170, 0.1);
-  --text: #1d1f33;
-  --accent: #4a4fd6;
-  --accent-2: #9b3fd6;
-  --accent-grad: linear-gradient(135deg, #2f8cff 0%, #5b4cf0 50%, #b13ee0 100%);
-  --title-grad: linear-gradient(100deg, #1aa6e0 0%, #5b4cf0 40%, #d63ea6 75%, #e08a1a 100%);
-  --title-glow: rgba(91, 76, 240, 0.25);
-  --canvas-bg: #ffffff;
-  --canvas-border: rgba(40, 45, 90, 0.14);
-  --board-shadow: rgba(80, 70, 200, 0.22);
-  --label: #5d6185;
-  --muted: #5a5d78;
-  --kbd-bg: linear-gradient(180deg, #ffffff, #e8eaf5);
-  --kbd-border: rgba(40, 45, 90, 0.18);
-  --kbd-text: #33364f;
-  --kbd-edge: #c4c8de;
-  --overlay-bg: rgba(238, 240, 250, 0.6);
-  --danger: #d6334d;
-  --btn-text: #ffffff;
-  --btn-hover: linear-gradient(135deg, #4d9dff 0%, #7365f5 50%, #c25ae8 100%);
-  --btn-glow: rgba(91, 76, 240, 0.4);
-  --grid: #e7e9f3;
-  --combo: #d84315;
-  --combo-glow: rgba(216, 67, 21, 0.25);
-  --b2b: #ef6c00;
-  --win: #1f9d55;
-  --menu-bg: rgba(238, 240, 250, 0.86);
-  --energy: #f2a516;
-
-  --glass-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.6));
-  --glass-border: rgba(40, 45, 90, 0.1);
-  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  --surface: rgba(255, 255, 255, 0.7);
-  --surface-hover: #ffffff;
-  --shadow-md: 0 10px 30px rgba(60, 70, 140, 0.14);
-  --shadow-lg: 0 24px 60px rgba(60, 70, 140, 0.2);
-}
-
-/* Modo retro: consola 8-bit con paleta limitada. Va después de los temas y con
-   [data-theme] también, para ganarles sea cual sea el tema activo. */
-:root[data-style='retro'],
-:root[data-style='retro'][data-theme] {
+/* Modo retro: consola 8-bit con paleta limitada. */
+:root[data-style='retro'] {
   --font-display: 'Press Start 2P', monospace;
   --font-ui: 'Press Start 2P', monospace;
   --font-mono: 'Press Start 2P', monospace;
@@ -1346,10 +1302,8 @@ kbd {
   color: var(--label);
 }
 
-/* Neón: todo negro para que destaque el halo de los bloques. Con [data-theme] también,
-   para ganar a cualquiera de los dos temas. */
-:root[data-skin='neon'],
-:root[data-skin='neon'][data-theme] {
+/* Neón: todo negro para que destaque el halo de los bloques. */
+:root[data-skin='neon'] {
   --bg: #000;
   --text: #e8f6ff;
   --accent: #00e5ff;

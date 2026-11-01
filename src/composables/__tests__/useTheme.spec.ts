@@ -102,18 +102,6 @@ describe('useTheme: skins', () => {
     expect(skin.value).toBe('neon')
   })
 
-  it('en 8-bit y neón el tema claro/oscuro no cambia y se conserva al salir', () => {
-    const { theme, toggleTheme, setSkin } = mountTheme()
-    setSkin('8bit')
-    toggleTheme()
-    setSkin('neon')
-    toggleTheme()
-    expect(theme.value).toBe('dark')
-    setSkin('pastel')
-    toggleTheme()
-    expect(theme.value).toBe('light')
-  })
-
   it('escribir R en un campo de texto no alterna el modo retro', () => {
     const { retro } = mountTheme()
     const input = document.body.appendChild(document.createElement('input'))
