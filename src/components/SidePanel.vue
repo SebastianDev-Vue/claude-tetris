@@ -74,3 +74,93 @@ const comboLabel = computed(() =>
     </div>
   </aside>
 </template>
+
+<style scoped>
+/* ---- Combo ---- */
+.combo-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+}
+
+.value.combo {
+  display: inline-block;
+  color: var(--muted);
+  text-shadow: none;
+}
+
+.value.combo.active {
+  color: var(--combo);
+  text-shadow: 0 0 12px var(--combo-glow);
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: #1a1000;
+  background: linear-gradient(135deg, #ffd27a, var(--b2b));
+  box-shadow: 0 0 14px var(--b2b);
+}
+
+.energy-bar {
+  position: relative;
+  height: 12px;
+  border-radius: var(--radius-pill);
+  background: var(--canvas-bg);
+  border: 1px solid var(--canvas-border);
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.energy-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ff9f43, var(--energy));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--energy) 60%, transparent);
+  transition: width 0.35s ease;
+}
+
+.energy-bar.full {
+  border-color: var(--energy);
+  animation: energy-pulse 1s ease-in-out infinite;
+}
+
+/* Brillo que recorre la barra llena */
+.energy-bar.full .energy-fill {
+  background: linear-gradient(90deg, var(--energy), #fff59d, var(--energy));
+  background-size: 200% 100%;
+  animation: energy-shine 1.4s linear infinite;
+}
+
+@keyframes energy-pulse {
+  50% {
+    box-shadow: 0 0 14px var(--energy);
+  }
+}
+
+@keyframes energy-shine {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.energy-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--energy);
+}
+
+.queue-strip {
+  display: flex;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+</style>
