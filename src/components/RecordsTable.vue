@@ -53,3 +53,58 @@ const formatDate = (iso: string) => new Date(iso).toLocaleDateString()
     </template>
   </section>
 </template>
+
+<style scoped>
+.records {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.records-title {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: var(--accent);
+}
+
+.records-empty,
+.records-best {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.records-table {
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.records-table th {
+  font-weight: 600;
+  color: var(--label);
+  padding: 2px 5px;
+}
+
+.records-table td {
+  padding: 2px 5px;
+  text-align: right;
+}
+
+.records-table .records-name {
+  text-align: left;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.records-table tr.records-new td {
+  color: var(--energy);
+  font-weight: 700;
+  background: color-mix(in srgb, var(--energy) 15%, transparent);
+}
+</style>
