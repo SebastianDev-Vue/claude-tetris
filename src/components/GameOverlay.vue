@@ -220,3 +220,317 @@ const vFocus = { mounted: (el: HTMLElement) => el.focus() }
     </Transition>
   </Teleport>
 </template>
+
+<style scoped>
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: var(--overlay-bg);
+  backdrop-filter: blur(10px) saturate(130%);
+  border-radius: var(--radius-lg);
+}
+
+.overlay-box {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+  max-width: 100%;
+  padding: var(--space-6) var(--space-6) 28px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-highlight), var(--shadow-lg);
+  backdrop-filter: blur(18px) saturate(150%);
+}
+
+.overlay-title {
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: 5px;
+  color: var(--danger);
+  text-shadow: 0 0 22px color-mix(in srgb, var(--danger) 55%, transparent);
+  margin-bottom: var(--space-1);
+}
+
+.overlay-score {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-pill);
+}
+
+.overlay-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.overlay-title--accent {
+  color: var(--text);
+  text-shadow: 0 0 22px var(--title-glow);
+}
+
+.overlay-title--win {
+  color: var(--win);
+  text-shadow: 0 0 18px var(--win);
+  animation: win-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes win-pulse {
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+.overlay-sub {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* La pantalla de menú tapa más el tablero para que se lea bien */
+.overlay--menu {
+  background: var(--menu-bg);
+}
+
+/* Campos de formulario del overlay (nombre del récord, selectores).
+   :where() mantiene la especificidad de antes para que .restart-btn.secondary siga ganando */
+:where(.overlay) input[type='text'],
+:where(.overlay) select {
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 9px 14px;
+  box-shadow: var(--glass-highlight);
+  transition:
+    border-color var(--dur-fast) ease,
+    box-shadow var(--dur-fast) ease;
+}
+
+:where(.overlay) input[type='text']:hover,
+:where(.overlay) select:hover {
+  border-color: var(--accent);
+}
+
+:where(.overlay) input[type='text']:focus-visible,
+:where(.overlay) select:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+
+:where(.overlay) select option {
+  background: var(--canvas-bg);
+  color: var(--text);
+}
+
+/* ---- Menú de modos ---- */
+.mode-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 340px;
+  max-width: 100%;
+}
+
+.mode-btn {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 11px 14px;
+  text-align: left;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) ease,
+    background var(--dur-fast) ease,
+    box-shadow var(--dur-fast) ease;
+}
+
+/* Barra de acento a la izquierda que aparece al seleccionar */
+.mode-btn::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--accent-grad);
+  transform: scaleY(0);
+  transition: transform var(--dur-med) var(--ease-out);
+}
+
+.mode-btn:hover,
+.mode-btn:focus-visible {
+  transform: translateX(4px);
+  background: var(--surface-hover);
+  border-color: var(--accent);
+  box-shadow: 0 6px 22px var(--title-glow);
+  outline: none;
+}
+
+.mode-btn:hover::before,
+.mode-btn:focus-visible::before {
+  transform: scaleY(1);
+}
+
+.mode-btn:active {
+  transform: translateX(4px) scale(0.98);
+}
+
+.mode-btn kbd {
+  flex-shrink: 0;
+}
+
+.mode-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mode-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+
+.mode-desc {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.overlay-title--energy {
+  color: var(--energy);
+  text-shadow: 0 0 18px var(--energy);
+}
+
+.skill-btn:hover,
+.skill-btn:focus-visible {
+  border-color: var(--skill);
+  box-shadow: 0 6px 22px color-mix(in srgb, var(--skill) 45%, transparent);
+}
+
+.skill-btn::before {
+  background: var(--skill);
+}
+
+.skill-btn.unavailable {
+  opacity: 0.45;
+}
+
+.skill-icon {
+  font-size: 20px;
+  width: 24px;
+  text-align: center;
+}
+
+/* ===== Menú de pausa: nivel inicial y lista de controles ===== */
+.pause-level {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.pause-level select {
+  margin-top: 0;
+  cursor: pointer;
+}
+
+.pause-hint {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.pause-controls {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 6px 16px;
+  justify-content: center;
+  text-align: left;
+}
+
+.pause-controls li {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Panel fijo a la derecha, bajo la barra de skin y tema (fuera del overlay del tablero) */
+.records-panel {
+  position: fixed;
+  top: 72px;
+  right: var(--space-4);
+  z-index: 9;
+  width: 280px;
+  padding: var(--space-4);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-highlight), var(--shadow-md);
+  backdrop-filter: blur(14px) saturate(140%);
+}
+
+/* En pantallas estrechas no hay hueco a la derecha: va al final de la página */
+@media (max-width: 1100px) {
+  .records-panel {
+    position: static;
+    margin: var(--space-4) auto;
+  }
+}
+
+.record-form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.record-qualifies,
+.record-new-msg {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--energy);
+}
+
+.record-new-msg {
+  font-size: 16px;
+  animation: win-pulse 1.2s ease-in-out infinite;
+}
+
+/* El resto lo da la regla de input[type='text'] */
+.record-input {
+  width: 160px;
+  text-align: center;
+}
+</style>
