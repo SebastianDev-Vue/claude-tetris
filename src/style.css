@@ -251,17 +251,6 @@ button {
   align-items: flex-start;
 }
 
-#board {
-  display: block;
-  border: 1px solid var(--canvas-border);
-  background: var(--canvas-bg);
-  border-radius: var(--radius-md);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.03),
-    0 0 60px var(--board-shadow),
-    var(--shadow-lg);
-}
-
 /* ==========================================================================
    Paneles laterales (tarjetas de cristal)
    ========================================================================== */
@@ -609,8 +598,7 @@ kbd {
 
 /* Campos de formulario dentro de overlays (p. ej. nombre del récord, selectores) */
 .overlay input[type='text'],
-.overlay select,
-.toggles select {
+.overlay select {
   font: inherit;
   font-size: 14px;
   color: var(--text);
@@ -625,21 +613,18 @@ kbd {
 }
 
 .overlay input[type='text']:hover,
-.overlay select:hover,
-.toggles select:hover {
+.overlay select:hover {
   border-color: var(--accent);
 }
 
 .overlay input[type='text']:focus-visible,
-.overlay select:focus-visible,
-.toggles select:focus-visible {
+.overlay select:focus-visible {
   outline: none;
   border-color: var(--accent);
   box-shadow: var(--focus-ring);
 }
 
-.overlay select option,
-.toggles select option {
+.overlay select option {
   background: var(--canvas-bg);
   color: var(--text);
 }
@@ -760,91 +745,6 @@ kbd {
 }
 
 /* ==========================================================================
-   Barra superior: control segmentado tipo píldora
-   Cualquier botón dentro de .toggles hereda este aspecto.
-   ========================================================================== */
-.toggles {
-  position: fixed;
-  top: var(--space-4);
-  right: var(--space-4);
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1);
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-pill);
-  box-shadow: var(--glass-highlight), var(--shadow-md);
-  backdrop-filter: blur(14px) saturate(140%);
-}
-
-.toggles button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: transparent;
-  color: var(--muted);
-  border: 1px solid transparent;
-  border-radius: var(--radius-pill);
-  padding: 7px 16px;
-  font-family: var(--font-ui);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition:
-    color var(--dur-fast) ease,
-    background var(--dur-fast) ease,
-    box-shadow var(--dur-fast) ease,
-    transform var(--dur-fast) var(--ease-out);
-}
-
-.toggles button:hover:not(:disabled) {
-  color: var(--text);
-  background: var(--surface-hover);
-}
-
-.toggles button:active:not(:disabled) {
-  transform: scale(0.96);
-}
-
-/* Opción activa del segmento */
-.toggles button[aria-pressed='true'],
-.toggles button.active {
-  color: var(--btn-text);
-  background: var(--accent-grad);
-  box-shadow: 0 4px 14px var(--btn-glow);
-}
-
-.toggles button[aria-pressed='true']:hover:not(:disabled),
-.toggles button.active:hover:not(:disabled) {
-  color: var(--btn-text);
-  background: var(--btn-hover);
-}
-
-/* Deshabilitado no se marca como activo aunque conserve aria-pressed */
-.toggles button:disabled {
-  color: var(--muted);
-  background: transparent;
-  box-shadow: none;
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.toggles button:focus-visible {
-  box-shadow: var(--focus-ring);
-}
-
-.toggles select {
-  border-radius: var(--radius-pill);
-  padding: 6px 14px;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-/* ==========================================================================
    Energía y habilidades
    ========================================================================== */
 .energy-bar {
@@ -928,27 +828,6 @@ kbd {
   margin-top: var(--space-1);
 }
 
-/* Tinte del tablero con efectos de tiempo activos */
-#board {
-  transition:
-    box-shadow 0.3s ease,
-    border-color 0.3s ease;
-}
-
-#board.board--slow {
-  border-color: #81c784;
-  box-shadow:
-    0 0 32px rgba(129, 199, 132, 0.55),
-    var(--shadow-lg);
-}
-
-#board.board--frozen {
-  border-color: #b3e5fc;
-  box-shadow:
-    0 0 32px rgba(179, 229, 252, 0.7),
-    var(--shadow-lg);
-}
-
 /* ---- HOLD ---- */
 .hold-slot .preview {
   transition:
@@ -959,12 +838,6 @@ kbd {
 .hold-slot.locked .preview {
   opacity: 0.35;
   filter: grayscale(1);
-}
-
-/* ---- Marco del tablero ---- */
-.board-frame {
-  position: relative;
-  display: flex;
 }
 
 /* ==========================================================================
@@ -1098,21 +971,6 @@ kbd {
     0 0 0 6px #000,
     0 0 0 9px var(--label),
     0 0 0 12px #000;
-}
-
-/* Líneas de barrido del CRT por encima del tablero */
-.board-frame.retro::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.25) 0,
-    rgba(0, 0, 0, 0.25) 1px,
-    transparent 1px,
-    transparent 3px
-  );
 }
 
 :root[data-style='retro'] .energy-fill,
@@ -1292,16 +1150,7 @@ kbd {
   outline-offset: 1px;
 }
 
-/* ---- Skins: selector y skin neón ---- */
-.skin-picker {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--label);
-}
-
+/* ---- Skin neón ---- */
 /* Neón: todo negro para que destaque el halo de los bloques. */
 :root[data-skin='neon'] {
   --bg: #000;
