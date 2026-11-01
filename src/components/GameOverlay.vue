@@ -96,13 +96,6 @@ const vFocus = { mounted: (el: HTMLElement) => el.focus() }
               </button>
             </li>
           </ul>
-          <RecordsTable
-            :records="records"
-            :best-combo="bestCombo"
-            :max-lines="maxLines"
-            :highlight="-1"
-            @clear="clearRecords"
-          />
         </div>
 
         <!-- Fin de partida -->
@@ -140,13 +133,6 @@ const vFocus = { mounted: (el: HTMLElement) => el.focus() }
               Menú
             </button>
           </div>
-          <RecordsTable
-            :records="records"
-            :best-combo="bestCombo"
-            :max-lines="maxLines"
-            :highlight="savedIndex"
-            @clear="clearRecords"
-          />
         </div>
 
         <!-- Habilidades (barra de energía llena) -->
@@ -218,4 +204,19 @@ const vFocus = { mounted: (el: HTMLElement) => el.focus() }
       </Transition>
     </div>
   </Transition>
+
+  <!-- Récords en un panel aparte bajo la barra superior: dentro del overlay no caben sin scroll -->
+  <Teleport to="body">
+    <Transition name="fade">
+      <aside v-if="screen === 'menu' || screen === 'over'" class="records-panel">
+        <RecordsTable
+          :records="records"
+          :best-combo="bestCombo"
+          :max-lines="maxLines"
+          :highlight="screen === 'over' ? savedIndex : -1"
+          @clear="clearRecords"
+        />
+      </aside>
+    </Transition>
+  </Teleport>
 </template>
