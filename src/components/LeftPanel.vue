@@ -41,3 +41,46 @@ const { game, hud } = useGameContext()
     </div>
   </aside>
 </template>
+
+<style scoped>
+/* ---- Controles ---- */
+.controls ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.controls li {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* ---- Panel izquierdo ---- */
+.panel--left {
+  width: 180px;
+}
+
+.objective-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  color: var(--text);
+}
+
+/* ---- HOLD ---- */
+.hold-slot .preview {
+  transition:
+    opacity 0.25s ease,
+    filter 0.25s ease;
+}
+
+.hold-slot.locked .preview {
+  opacity: 0.35;
+  filter: grayscale(1);
+}
+</style>
