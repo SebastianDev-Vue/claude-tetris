@@ -251,17 +251,6 @@ button {
   align-items: flex-start;
 }
 
-#board {
-  display: block;
-  border: 1px solid var(--canvas-border);
-  background: var(--canvas-bg);
-  border-radius: var(--radius-md);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.03),
-    0 0 60px var(--board-shadow),
-    var(--shadow-lg);
-}
-
 /* ==========================================================================
    Paneles laterales (tarjetas de cristal)
    ========================================================================== */
@@ -328,38 +317,6 @@ button {
   gap: var(--space-3);
 }
 
-/* ---- Combo ---- */
-.combo-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 32px;
-}
-
-.value.combo {
-  display: inline-block;
-  color: var(--muted);
-  text-shadow: none;
-}
-
-.value.combo.active {
-  color: var(--combo);
-  text-shadow: 0 0 12px var(--combo-glow);
-}
-
-.badge {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
-  font-family: var(--font-display);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 1.5px;
-  color: #1a1000;
-  background: linear-gradient(135deg, #ffd27a, var(--b2b));
-  box-shadow: 0 0 14px var(--b2b);
-}
-
 /* Animación "pop": entra grande y se asienta; sale desvaneciéndose */
 .pop-enter-active {
   animation: pop-in 0.28s var(--ease-spring);
@@ -393,22 +350,6 @@ button {
   box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.25);
 }
 
-/* ---- Controles ---- */
-.controls ul {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.controls li {
-  font-size: 12px;
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
 kbd {
   display: inline-flex;
   align-items: center;
@@ -430,18 +371,6 @@ kbd {
 /* ==========================================================================
    Overlay y menús
    ========================================================================== */
-.overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-4);
-  background: var(--overlay-bg);
-  backdrop-filter: blur(10px) saturate(130%);
-  border-radius: var(--radius-lg);
-}
-
 /* Transición de entrada/salida del overlay (<Transition name="fade">) */
 .fade-enter-active,
 .fade-leave-active {
@@ -451,44 +380,6 @@ kbd {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
-}
-
-.overlay-box {
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  align-items: center;
-  max-width: 100%;
-  padding: var(--space-6) var(--space-6) 28px;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--glass-highlight), var(--shadow-lg);
-  backdrop-filter: blur(18px) saturate(150%);
-}
-
-.overlay-title {
-  text-align: center;
-  font-family: var(--font-display);
-  font-size: 30px;
-  font-weight: 900;
-  letter-spacing: 5px;
-  color: var(--danger);
-  text-shadow: 0 0 22px color-mix(in srgb, var(--danger) 55%, transparent);
-  margin-bottom: var(--space-1);
-}
-
-.overlay-score {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--accent);
-  padding: var(--space-2) var(--space-4);
-  background: var(--surface);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-pill);
 }
 
 /* ---- Botones principales ---- */
@@ -573,161 +464,6 @@ kbd {
   box-shadow: var(--focus-ring);
 }
 
-.overlay-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.overlay-title--accent {
-  color: var(--text);
-  text-shadow: 0 0 22px var(--title-glow);
-}
-
-.overlay-title--win {
-  color: var(--win);
-  text-shadow: 0 0 18px var(--win);
-  animation: win-pulse 1.2s ease-in-out infinite;
-}
-
-@keyframes win-pulse {
-  50% {
-    transform: scale(1.06);
-  }
-}
-
-.overlay-sub {
-  font-size: 14px;
-  color: var(--muted);
-}
-
-/* La pantalla de menú tapa más el tablero para que se lea bien */
-.overlay--menu {
-  background: var(--menu-bg);
-}
-
-/* Campos de formulario dentro de overlays (p. ej. nombre del récord, selectores) */
-.overlay input[type='text'],
-.overlay select,
-.toggles select {
-  font: inherit;
-  font-size: 14px;
-  color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
-  padding: 9px 14px;
-  box-shadow: var(--glass-highlight);
-  transition:
-    border-color var(--dur-fast) ease,
-    box-shadow var(--dur-fast) ease;
-}
-
-.overlay input[type='text']:hover,
-.overlay select:hover,
-.toggles select:hover {
-  border-color: var(--accent);
-}
-
-.overlay input[type='text']:focus-visible,
-.overlay select:focus-visible,
-.toggles select:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: var(--focus-ring);
-}
-
-.overlay select option,
-.toggles select option {
-  background: var(--canvas-bg);
-  color: var(--text);
-}
-
-/* ---- Menú de modos ---- */
-.mode-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  width: 340px;
-  max-width: 100%;
-}
-
-.mode-btn {
-  position: relative;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: 11px 14px;
-  text-align: left;
-  background: var(--surface);
-  color: var(--text);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  overflow: hidden;
-  transition:
-    transform var(--dur-fast) var(--ease-out),
-    border-color var(--dur-fast) ease,
-    background var(--dur-fast) ease,
-    box-shadow var(--dur-fast) ease;
-}
-
-/* Barra de acento a la izquierda que aparece al seleccionar */
-.mode-btn::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--accent-grad);
-  transform: scaleY(0);
-  transition: transform var(--dur-med) var(--ease-out);
-}
-
-.mode-btn:hover,
-.mode-btn:focus-visible {
-  transform: translateX(4px);
-  background: var(--surface-hover);
-  border-color: var(--accent);
-  box-shadow: 0 6px 22px var(--title-glow);
-  outline: none;
-}
-
-.mode-btn:hover::before,
-.mode-btn:focus-visible::before {
-  transform: scaleY(1);
-}
-
-.mode-btn:active {
-  transform: translateX(4px) scale(0.98);
-}
-
-.mode-btn kbd {
-  flex-shrink: 0;
-}
-
-.mode-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.mode-name {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 1px;
-}
-
-.mode-desc {
-  font-size: 12px;
-  color: var(--muted);
-}
-
 /* Cambio entre pantallas del overlay */
 .slide-enter-active,
 .slide-leave-active {
@@ -744,227 +480,6 @@ kbd {
 .slide-leave-to {
   opacity: 0;
   transform: translateY(-12px) scale(0.98);
-}
-
-/* ---- Panel izquierdo ---- */
-.panel--left {
-  width: 180px;
-}
-
-.objective-name {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 0.5px;
-  color: var(--text);
-}
-
-/* ==========================================================================
-   Barra superior: control segmentado tipo píldora
-   Cualquier botón dentro de .toggles hereda este aspecto.
-   ========================================================================== */
-.toggles {
-  position: fixed;
-  top: var(--space-4);
-  right: var(--space-4);
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1);
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-pill);
-  box-shadow: var(--glass-highlight), var(--shadow-md);
-  backdrop-filter: blur(14px) saturate(140%);
-}
-
-.toggles button {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: transparent;
-  color: var(--muted);
-  border: 1px solid transparent;
-  border-radius: var(--radius-pill);
-  padding: 7px 16px;
-  font-family: var(--font-ui);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition:
-    color var(--dur-fast) ease,
-    background var(--dur-fast) ease,
-    box-shadow var(--dur-fast) ease,
-    transform var(--dur-fast) var(--ease-out);
-}
-
-.toggles button:hover:not(:disabled) {
-  color: var(--text);
-  background: var(--surface-hover);
-}
-
-.toggles button:active:not(:disabled) {
-  transform: scale(0.96);
-}
-
-/* Opción activa del segmento */
-.toggles button[aria-pressed='true'],
-.toggles button.active {
-  color: var(--btn-text);
-  background: var(--accent-grad);
-  box-shadow: 0 4px 14px var(--btn-glow);
-}
-
-.toggles button[aria-pressed='true']:hover:not(:disabled),
-.toggles button.active:hover:not(:disabled) {
-  color: var(--btn-text);
-  background: var(--btn-hover);
-}
-
-/* Deshabilitado no se marca como activo aunque conserve aria-pressed */
-.toggles button:disabled {
-  color: var(--muted);
-  background: transparent;
-  box-shadow: none;
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.toggles button:focus-visible {
-  box-shadow: var(--focus-ring);
-}
-
-.toggles select {
-  border-radius: var(--radius-pill);
-  padding: 6px 14px;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-/* ==========================================================================
-   Energía y habilidades
-   ========================================================================== */
-.energy-bar {
-  position: relative;
-  height: 12px;
-  border-radius: var(--radius-pill);
-  background: var(--canvas-bg);
-  border: 1px solid var(--canvas-border);
-  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.35);
-  overflow: hidden;
-}
-
-.energy-fill {
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #ff9f43, var(--energy));
-  box-shadow: 0 0 10px color-mix(in srgb, var(--energy) 60%, transparent);
-  transition: width 0.35s ease;
-}
-
-.energy-bar.full {
-  border-color: var(--energy);
-  animation: energy-pulse 1s ease-in-out infinite;
-}
-
-/* Brillo que recorre la barra llena */
-.energy-bar.full .energy-fill {
-  background: linear-gradient(90deg, var(--energy), #fff59d, var(--energy));
-  background-size: 200% 100%;
-  animation: energy-shine 1.4s linear infinite;
-}
-
-@keyframes energy-pulse {
-  50% {
-    box-shadow: 0 0 14px var(--energy);
-  }
-}
-
-@keyframes energy-shine {
-  to {
-    background-position: -200% 0;
-  }
-}
-
-.energy-hint {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--energy);
-}
-
-.overlay-title--energy {
-  color: var(--energy);
-  text-shadow: 0 0 18px var(--energy);
-}
-
-.skill-btn:hover,
-.skill-btn:focus-visible {
-  border-color: var(--skill);
-  box-shadow: 0 6px 22px color-mix(in srgb, var(--skill) 45%, transparent);
-}
-
-.skill-btn::before {
-  background: var(--skill);
-}
-
-.skill-btn.unavailable {
-  opacity: 0.45;
-}
-
-.skill-icon {
-  font-size: 20px;
-  width: 24px;
-  text-align: center;
-}
-
-.queue-strip {
-  display: flex;
-  gap: var(--space-1);
-  margin-top: var(--space-1);
-}
-
-/* Tinte del tablero con efectos de tiempo activos */
-#board {
-  transition:
-    box-shadow 0.3s ease,
-    border-color 0.3s ease;
-}
-
-#board.board--slow {
-  border-color: #81c784;
-  box-shadow:
-    0 0 32px rgba(129, 199, 132, 0.55),
-    var(--shadow-lg);
-}
-
-#board.board--frozen {
-  border-color: #b3e5fc;
-  box-shadow:
-    0 0 32px rgba(179, 229, 252, 0.7),
-    var(--shadow-lg);
-}
-
-/* ---- HOLD ---- */
-.hold-slot .preview {
-  transition:
-    opacity 0.25s ease,
-    filter 0.25s ease;
-}
-
-.hold-slot.locked .preview {
-  opacity: 0.35;
-  filter: grayscale(1);
-}
-
-/* ---- Marco del tablero ---- */
-.board-frame {
-  position: relative;
-  display: flex;
 }
 
 /* ==========================================================================
@@ -1100,21 +615,6 @@ kbd {
     0 0 0 12px #000;
 }
 
-/* Líneas de barrido del CRT por encima del tablero */
-.board-frame.retro::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.25) 0,
-    rgba(0, 0, 0, 0.25) 1px,
-    transparent 1px,
-    transparent 3px
-  );
-}
-
 :root[data-style='retro'] .energy-fill,
 :root[data-style='retro'] .energy-bar.full .energy-fill {
   background: var(--energy);
@@ -1137,69 +637,12 @@ kbd {
   box-shadow: 0 0 0 3px var(--accent);
 }
 
-/* ===== Menú de pausa: nivel inicial y lista de controles ===== */
-.pause-level {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  font-size: 14px;
-  color: var(--text);
-}
-
-.pause-level select {
-  margin-top: 0;
-  cursor: pointer;
-}
-
-.pause-hint {
-  font-size: 11px;
-  color: var(--muted);
-}
-
-.pause-controls {
-  list-style: none;
-  display: grid;
-  grid-template-columns: repeat(2, auto);
-  gap: 6px 16px;
-  justify-content: center;
-  text-align: left;
-}
-
-.pause-controls li {
-  font-size: 12px;
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
 /* ==== Tabla de récords (menú de inicio y game over) ==== */
-
-/* Panel fijo a la derecha, bajo la barra de skin y tema (fuera del overlay del tablero) */
-.records-panel {
-  position: fixed;
-  top: 72px;
-  right: var(--space-4);
-  z-index: 9;
-  width: 280px;
-  padding: var(--space-4);
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--glass-highlight), var(--shadow-md);
-  backdrop-filter: blur(14px) saturate(140%);
-}
 
 /* En pantallas estrechas no hay hueco a la derecha: va al final de la página */
 @media (max-width: 1100px) {
   body {
     flex-wrap: wrap;
-  }
-
-  .records-panel {
-    position: static;
-    margin: var(--space-4) auto;
   }
 }
 
@@ -1256,52 +699,7 @@ kbd {
   background: color-mix(in srgb, var(--energy) 15%, transparent);
 }
 
-.record-form {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-
-.record-qualifies,
-.record-new-msg {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--energy);
-}
-
-.record-new-msg {
-  font-size: 16px;
-  animation: win-pulse 1.2s ease-in-out infinite;
-}
-
-.record-input {
-  width: 160px;
-  padding: 6px 10px;
-  font: inherit;
-  font-size: 14px;
-  text-align: center;
-  color: var(--text);
-  background: var(--kbd-bg);
-  border: 1px solid var(--kbd-border);
-  border-radius: 6px;
-}
-
-.record-input:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-/* ---- Skins: selector y skin neón ---- */
-.skin-picker {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--label);
-}
-
+/* ---- Skin neón ---- */
 /* Neón: todo negro para que destaque el halo de los bloques. */
 :root[data-skin='neon'] {
   --bg: #000;
