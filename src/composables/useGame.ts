@@ -1,16 +1,27 @@
-import { inject, markRaw, onMounted, onUnmounted, reactive, type InjectionKey } from 'vue'
+import {
+  inject,
+  markRaw,
+  onMounted,
+  onUnmounted,
+  reactive,
+  type InjectionKey,
+  type ShallowRef,
+} from 'vue'
 import { Game } from '../engine/game'
 import { isPowerUp } from '../engine/constants'
 import { MODES, formatTime, type GameMode } from '../engine/challenges'
 import { SKILLS, type SkillId } from '../engine/skills'
 import { Effects } from '../render/effects'
 import { Sfx } from '../audio/sfx'
-import { isTypingTarget } from './useTheme'
+import { KeyRepeat, type RepeatDir } from '../engine/keyRepeat'
+import { hotkeysBlocked } from './useTheme'
+import { actionForKey, useSettings, type SettingsContext } from './useSettings'
+import { useRunStats, type RunStats } from './useRunStats'
 
 // Tope del dt por frame: al volver de una pestaña oculta rAF entrega minutos de golpe
 const MAX_FRAME_MS = 100
-// Tras reanudar se ignoran las teclas de juego un instante para evitar movimientos accidentales
-const RESUME_GRACE_MS = 200
+/** Cuenta atrás 3-2-1 al reanudar. */
+const RESUME_COUNTDOWN_MS = 3000
 
 type FrameListener = (now: number) => void
 
@@ -20,6 +31,8 @@ export interface Hud {
   level: number
   powerUpInfo: string
   paused: boolean
+  /** Segundos de la cuenta atrás al reanudar (0 = sin cuenta). */
+  countdown: number
   gameOver: boolean
   /** Fijados consecutivos con líneas (el panel muestra el multiplicador desde 2). */
   combo: number
@@ -64,6 +77,10 @@ export interface GameContext {
   effects: Effects
   /** Copia reactiva y plana de lo que muestra la interfaz; se sincroniza en cada frame. */
   hud: Hud
+  /** Tiempos de repetición y teclas de juego configurables. */
+  settings: SettingsContext
+  /** Informe de la partida en curso. */
+  runStats: ShallowRef<RunStats>
   /** Suscribe un dibujado por frame; devuelve la función para darse de baja. */
   onFrame: (fn: FrameListener) => () => void
   /** Empieza una partida nueva en el modo indicado. */
@@ -72,6 +89,7 @@ export interface GameContext {
   restart: () => void
   /** Vuelve a la pantalla de selección de modo. */
   openMenu: () => void
+  /** Pausa, o reanuda con cuenta atrás; durante la cuenta la cancela. */
   togglePause: () => void
   /** Nivel inicial de la próxima partida (1–10). */
   setStartLevel: (level: number) => void
@@ -106,11 +124,13 @@ function powerUpLabel(game: Game): string {
 export function useGame(): GameContext {
   const effects = new Effects()
   const sfx = new Sfx()
+  const run = useRunStats(() => game)
   const game = markRaw(
     new Game({
       onEvent: (e) => {
         effects.handle(e, performance.now())
         sfx.handle(e)
+        run.handle(e)
       },
     }),
   )
@@ -120,6 +140,7 @@ export function useGame(): GameContext {
     level: 1,
     powerUpInfo: '',
     paused: false,
+    countdown: 0,
     gameOver: false,
     combo: 0,
     maxCombo: 0,
@@ -146,9 +167,10 @@ export function useGame(): GameContext {
   const listeners = new Set<FrameListener>()
   let animId = 0
   let lastTime = 0
-  let resumedAt = -Infinity
-  /** Tras reanudar, la auto-repetición de una tecla ya pulsada no cuenta hasta una pulsación nueva. */
-  let ignoreRepeat = false
+  /** Tiempo restante de la cuenta atrás; el motor sigue en pausa hasta que llega a 0. */
+  let countdownMs = 0
+  const settings = useSettings()
+  const keyRepeat = new KeyRepeat(settings.values)
 
   function syncHud(): void {
     // Asignar el mismo valor primitivo no dispara re-render en Vue
@@ -157,6 +179,7 @@ export function useGame(): GameContext {
     hud.level = game.level
     hud.powerUpInfo = powerUpLabel(game)
     hud.paused = game.paused
+    hud.countdown = Math.ceil(countdownMs / 1000)
     hud.gameOver = game.gameOver
     hud.combo = game.combo
     hud.maxCombo = game.maxCombo
@@ -179,8 +202,31 @@ export function useGame(): GameContext {
     hud.startLevel = game.startLevel
   }
 
+  function isAdvancing(): boolean {
+    return !hud.menu && !hud.skillMenu && !game.paused && !game.gameOver
+  }
+
+  function step(dir: RepeatDir): void {
+    if (dir === 'left') game.moveLeft()
+    else if (dir === 'right') game.moveRight()
+    else game.softDrop()
+  }
+
   function frame(now: number): void {
-    if (!hud.menu && !hud.skillMenu) game.update(Math.min(now - lastTime, MAX_FRAME_MS))
+    const dt = Math.min(now - lastTime, MAX_FRAME_MS)
+    if (countdownMs > 0) {
+      countdownMs -= dt
+      if (countdownMs <= 0) {
+        countdownMs = 0
+        game.togglePause()
+      }
+    }
+    if (isAdvancing()) {
+      keyRepeat.update(dt, step)
+      game.update(dt)
+    } else {
+      keyRepeat.clear() // pausa, menús y fin de partida olvidan las teclas mantenidas
+    }
     lastTime = now
     syncHud()
     listeners.forEach((fn) => fn(now))
@@ -191,6 +237,7 @@ export function useGame(): GameContext {
     // Limpiar antes de reset(): reset() ya puede anunciar una primera pieza especial
     effects.clear()
     game.reset(mode)
+    run.reset()
     hud.menu = false
     hud.skillMenu = false
     syncHud()
@@ -207,12 +254,19 @@ export function useGame(): GameContext {
   }
 
   function togglePause(): void {
-    game.togglePause()
-    if (!game.paused) {
-      resumedAt = performance.now()
-      ignoreRepeat = true
-    }
+    if (countdownMs > 0) countdownMs = 0
+    else if (game.paused) countdownMs = RESUME_COUNTDOWN_MS
+    else game.togglePause()
     syncHud()
+  }
+
+  /** Perder el foco para la partida o cancela la cuenta atrás: no debe reanudarse sin el jugador. */
+  function autoPause(): void {
+    if (countdownMs > 0 || isAdvancing()) togglePause()
+  }
+
+  function onVisibilityChange(): void {
+    if (document.hidden) autoPause()
   }
 
   function setStartLevel(level: number): void {
@@ -238,7 +292,7 @@ export function useGame(): GameContext {
   }
 
   function onSkillKey(e: KeyboardEvent): void {
-    if (e.code === 'Escape' || e.code === 'KeyE') return closeSkillMenu()
+    if (e.code === 'Escape' || e.code === settings.values.keys.skills) return closeSkillMenu()
     const skill = SKILLS[Number(e.key) - 1]
     if (skill) useSkill(skill.id)
   }
@@ -251,50 +305,53 @@ export function useGame(): GameContext {
   }
 
   function onKeydown(e: KeyboardEvent): void {
-    if (isTypingTarget(e.target)) return // escribir el nombre del récord no es jugar
+    if (hotkeysBlocked(e.target)) return // escribir el nombre del récord no es jugar
     sfx.unlock() // el audio solo puede activarse tras un gesto del usuario
     if (e.code === 'KeyM') {
       sfx.toggleMute()
       return syncHud()
     }
     if (hud.menu) return onMenuKey(e)
-    if (hud.skillMenu) return onSkillKey(e)
+    if (hud.skillMenu) {
+      if (!e.repeat) onSkillKey(e)
+      return
+    }
     if (e.code === 'KeyP' || e.code === 'Escape') {
       if (!e.repeat) togglePause()
       return
     }
-    // Con el menú de pausa abierto (o recién cerrado) las teclas de juego no llegan al motor
-    if (game.paused || performance.now() - resumedAt < RESUME_GRACE_MS) return
-    if (e.repeat && ignoreRepeat) return
-    if (!e.repeat) ignoreRepeat = false
-    switch (e.code) {
-      case 'KeyC':
-        if (!e.repeat) game.holdPiece() // mantener C pulsada no debe guardar cada pieza nueva
+    // En pausa y durante la cuenta atrás las teclas de juego no llegan al motor
+    const action = actionForKey(settings.values.keys, e.code)
+    if (!action || game.paused || game.gameOver) return
+    e.preventDefault() // evita scroll y que la tecla active el botón con foco
+    if (e.repeat) return // la repetición es propia: el resultado no depende del teclado del sistema
+    switch (action) {
+      case 'left':
+      case 'right':
+      case 'down':
+        step(action)
+        keyRepeat.press(action)
         break
-      case 'KeyE':
-        openSkillMenu()
-        break
-      case 'ArrowLeft':
-        game.moveLeft()
-        break
-      case 'ArrowRight':
-        game.moveRight()
-        break
-      case 'ArrowDown':
-        game.softDrop()
-        break
-      case 'ArrowUp':
-      case 'KeyX':
+      case 'rotate':
+      case 'rotateAlt':
         game.rotate()
         break
-      case 'Space':
-        e.preventDefault() // evita scroll y que Space active el botón con foco
+      case 'hardDrop':
         game.hardDrop()
         break
-      default:
-        return
+      case 'hold':
+        game.holdPiece()
+        break
+      case 'skills':
+        openSkillMenu()
+        break
     }
     syncHud()
+  }
+
+  function onKeyup(e: KeyboardEvent): void {
+    const action = actionForKey(settings.values.keys, e.code)
+    if (action === 'left' || action === 'right' || action === 'down') keyRepeat.release(action)
   }
 
   function onFrame(fn: FrameListener): () => void {
@@ -304,12 +361,18 @@ export function useGame(): GameContext {
 
   onMounted(() => {
     window.addEventListener('keydown', onKeydown)
+    window.addEventListener('keyup', onKeyup)
+    window.addEventListener('blur', autoPause)
+    document.addEventListener('visibilitychange', onVisibilityChange)
     lastTime = performance.now()
     animId = requestAnimationFrame(frame)
   })
 
   onUnmounted(() => {
     window.removeEventListener('keydown', onKeydown)
+    window.removeEventListener('keyup', onKeyup)
+    window.removeEventListener('blur', autoPause)
+    document.removeEventListener('visibilitychange', onVisibilityChange)
     cancelAnimationFrame(animId)
     listeners.clear()
   })
@@ -319,6 +382,8 @@ export function useGame(): GameContext {
     game,
     effects,
     hud,
+    settings,
+    runStats: run.stats,
     onFrame,
     start,
     restart,
