@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { BOMB, COLORS, GARBAGE } from '@/engine/constants'
+import { BOMB, COLORS, GARBAGE, HOLLOW } from '@/engine/constants'
 import { Game } from '@/engine/game'
 import {
   drawBlock,
@@ -21,9 +21,12 @@ interface Call {
 }
 
 /** Contexto 2D falso que registra cada llamada junto al fillStyle vigente. */
-function recordingContext() {
+function recordingContext(scale = 1) {
   const calls: Call[] = []
-  const state: Record<string | symbol, unknown> = { canvas: { width: 300, height: 600 } }
+  const state: Record<string | symbol, unknown> = {
+    canvas: { width: 300, height: 600 },
+    getTransform: () => ({ a: scale }),
+  }
   const ctx = new Proxy(state, {
     get(target, key) {
       if (key in target) return target[key]
@@ -182,5 +185,25 @@ describe('efectos de un solo color', () => {
     const painted = calls.filter((c) => ['fillRect', 'fill', 'fillText'].includes(c.name))
     expect(painted.length).toBeGreaterThan(0)
     expect(painted.every((c) => c.fillStyle === tint)).toBe(true)
+  })
+})
+
+describe('halos con el canvas escalado (mini tablero)', () => {
+  it('neón: shadowBlur se reduce con la escala, porque el canvas no lo transforma', () => {
+    const normal = recordingContext()
+    drawBlock(normal.ctx, 0, 0, 1, 30, 1, 'neon')
+    const mini = recordingContext(0.4)
+    drawBlock(mini.ctx, 0, 0, 1, 30, 1, 'neon')
+    expect(normal.named('strokeRect')[0]?.shadowBlur).toBe(15)
+    expect(mini.named('strokeRect')[0]?.shadowBlur).toBeCloseTo(6)
+  })
+
+  it('pieza especial: su halo también se reduce con la escala', () => {
+    const game = new Game({ random: () => 0.5 })
+    game.current = game.makePiece(HOLLOW)
+    const mini = recordingContext(0.4)
+    drawBoard(mini.ctx, game, opts('retro'), 0)
+    const rects = mini.named('fillRect')
+    expect(rects[rects.length - 1]?.shadowBlur).toBeCloseTo(4) // (10 + 6·sin 0) × 0,4
   })
 })
