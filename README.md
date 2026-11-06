@@ -19,6 +19,7 @@ Implementación de **Tetris** con **Vue 3 + TypeScript**, renderizado en HTML5 C
   - [Modo desafío](#modo-desafío)
   - [Energía y habilidades](#energía-y-habilidades)
   - [Hold](#hold)
+  - [Carrera contra tu fantasma](#carrera-contra-tu-fantasma)
   - [Skins](#skins)
 - [Cómo ejecutar el juego](#cómo-ejecutar-el-juego)
 - [Controles](#controles)
@@ -126,6 +127,14 @@ Cada línea limpiada carga **+10** de energía, y un Tetris o un T-spin con lín
 
 Pulsa **`C`** para guardar la pieza actual en el slot **HOLD** (panel izquierdo). Si ya había una guardada, se intercambian. Las piezas salen siempre desde arriba y con su orientación inicial. Solo puede usarse **una vez por turno**: el slot se atenúa hasta que se fija la pieza. Los power-ups también se pueden guardar. Si la pieza que entraría no cabe, el hold se rechaza con el aviso «NO DISPONIBLE». (No se usa `Shift`: en Windows, pulsarlo 5 veces seguidas abre el aviso de «Teclas especiales».)
 
+### Carrera contra tu fantasma
+
+Al terminar una partida, si es tu mejor marca de ese modo, se guarda. La próxima vez que juegues ese modo, tu mejor partida se reproduce en directo en un mini tablero y el panel muestra la diferencia de puntos, con color, signo y flecha (`+1.240 ▲`).
+
+- Se compite por puntos, no con las mismas piezas: las dos partidas se separan pronto.
+- Pausa y menús detienen a ambos. Si el fantasma termina antes, su tablero queda fijo con su puntuación final.
+- Reiniciar o salir al menú descarta la partida en curso. Se guarda una por modo en `localStorage` (`tetris-ghosts`).
+
 ### Skins
 
 El selector **Skin** (arriba a la derecha) o la tecla **`R`** (pasa a la siguiente) cambian el aspecto de los bloques, en el tablero y en las vistas previas. La elección se guarda en el navegador y se recupera al volver.
@@ -201,7 +210,7 @@ El código se divide en tres capas que no se mezclan:
 3. **Interfaz Vue** (`src/composables/`, `src/components/`):
    - `useGame()` crea el motor, el único bucle `requestAnimationFrame`, los atajos de teclado y una copia reactiva (`hud`) de los datos que muestra el panel.
    - `useTheme()` gestiona la skin (el juego usa siempre tema oscuro).
-   - Componentes: `GameBoard` (canvas del tablero), `LeftPanel` (objetivo, tiempo, controles), `SidePanel` (puntuación, combo, siguiente pieza), `PiecePreview`, `GameOverlay` (menú de modos, pausa y fin de partida con transiciones) y `ThemeToggle` (selector de skin).
+   - Componentes: `GameBoard` (canvas del tablero), `LeftPanel` (objetivo, tiempo, y controles o el mini tablero del fantasma), `GhostBoard` (mini tablero del fantasma), `SidePanel` (puntuación, combo, siguiente pieza), `PiecePreview`, `GameOverlay` (menú de modos, pausa y fin de partida con transiciones) y `ThemeToggle` (selector de skin).
 
 Algunas decisiones de diseño:
 

@@ -17,6 +17,9 @@ import { KeyRepeat, type RepeatDir } from '../engine/keyRepeat'
 import { hotkeysBlocked } from './useTheme'
 import { actionForKey, useSettings, type SettingsContext } from './useSettings'
 import { useRunStats, type RunStats } from './useRunStats'
+import { REPLAY_VERSION, STEP_MS, applyAction, createReplayer } from '../engine/replay'
+import type { Replay, ReplayAction } from '../engine/replay'
+import { loadGhost, saveGhost } from './useGhosts'
 
 // Tope del dt por frame: al volver de una pestaña oculta rAF entrega minutos de golpe
 const MAX_FRAME_MS = 100
@@ -68,11 +71,20 @@ export interface Hud {
   time: string
   /** Nivel con el que empezará la próxima partida. */
   startLevel: number
+  /** Hay una mejor marca de este modo corriendo en el mini tablero. */
+  hasGhost: boolean
+  ghostScore: number
+  /** El fantasma ya terminó: su tablero queda fijo y su puntuación es la final. */
+  ghostFinished: boolean
+  /** Puntos del jugador menos los del fantasma. */
+  ghostDiff: number
 }
 
 export interface GameContext {
   /** Instancia del motor. markRaw: Vue no debe envolver el tablero en proxies (se recorre cada frame). */
   game: Game
+  /** Mejor partida de este modo en reproducción; solo tiene sentido con `hud.hasGhost`. */
+  ghost: Game
   /** Efectos visuales pasajeros (popups, partículas, ondas) generados por eventos del motor. */
   effects: Effects
   /** Copia reactiva y plana de lo que muestra la interfaz; se sincroniza en cada frame. */
@@ -125,15 +137,20 @@ export function useGame(): GameContext {
   const effects = new Effects()
   const sfx = new Sfx()
   const run = useRunStats(() => game)
+  /** Grabación de la partida en curso; start() la sustituye, así que abandonar la descarta. */
+  let recording: Replay | null = null
   const game = markRaw(
     new Game({
       onEvent: (e) => {
         effects.handle(e, performance.now())
         sfx.handle(e)
         run.handle(e)
+        if (e.type === 'finish' && recording) saveGhost({ ...recording, score: game.score })
       },
     }),
   )
+  // Sin onEvent: el fantasma no suena ni genera partículas
+  const ghost = markRaw(new Game())
   const hud = reactive<Hud>({
     score: 0,
     lines: 0,
@@ -163,6 +180,10 @@ export function useGame(): GameContext {
     holdFits: true,
     canUndo: false,
     startLevel: 1,
+    hasGhost: false,
+    ghostScore: 0,
+    ghostFinished: false,
+    ghostDiff: 0,
   })
   const listeners = new Set<FrameListener>()
   let animId = 0
@@ -171,6 +192,11 @@ export function useGame(): GameContext {
   let countdownMs = 0
   const settings = useSettings()
   const keyRepeat = new KeyRepeat(settings.values)
+  /** Tiempo real aún sin convertir en pasos de simulación. */
+  let accumulator = 0
+  /** Pasos simulados de esta partida: solo suben con update() reales, es el reloj de la grabación. */
+  let steps = 0
+  let ghostStep: (() => void) | null = null
 
   function syncHud(): void {
     // Asignar el mismo valor primitivo no dispara re-render en Vue
@@ -200,16 +226,27 @@ export function useGame(): GameContext {
     hud.holdFits = game.holdFits
     hud.canUndo = game.canUndo
     hud.startLevel = game.startLevel
+    hud.hasGhost = ghostStep !== null
+    hud.ghostScore = ghost.score
+    hud.ghostFinished = ghost.gameOver
+    hud.ghostDiff = game.score - ghost.score
   }
 
   function isAdvancing(): boolean {
     return !hud.menu && !hud.skillMenu && !game.paused && !game.gameOver
   }
 
+  /** Todo el input de juego pasa por aquí. Parada, la acción no se graba: el fantasma sí la aplicaría. */
+  function act(action: ReplayAction): void {
+    if (!isAdvancing()) return
+    recording?.actions.push([steps, action])
+    applyAction(game, action)
+  }
+
   function step(dir: RepeatDir): void {
-    if (dir === 'left') game.moveLeft()
-    else if (dir === 'right') game.moveRight()
-    else game.softDrop()
+    if (dir === 'left') act('moveLeft')
+    else if (dir === 'right') act('moveRight')
+    else act('softDrop')
   }
 
   function frame(now: number): void {
@@ -223,7 +260,13 @@ export function useGame(): GameContext {
     }
     if (isAdvancing()) {
       keyRepeat.update(dt, step)
-      game.update(dt)
+      accumulator += dt
+      while (accumulator >= STEP_MS && !game.gameOver) {
+        accumulator -= STEP_MS
+        ghostStep?.()
+        game.update(STEP_MS)
+        steps++
+      }
     } else {
       keyRepeat.clear() // pausa, menús y fin de partida olvidan las teclas mantenidas
     }
@@ -236,8 +279,21 @@ export function useGame(): GameContext {
   function start(mode: GameMode): void {
     // Limpiar antes de reset(): reset() ya puede anunciar una primera pieza especial
     effects.clear()
-    game.reset(mode)
+    const seed = Math.floor(Math.random() * 2 ** 32)
+    recording = {
+      version: REPLAY_VERSION,
+      seed,
+      mode,
+      startLevel: game.startLevel,
+      score: 0,
+      actions: [],
+    }
+    accumulator = 0
+    steps = 0
+    game.reset(mode, seed)
     run.reset()
+    const best = loadGhost(mode)
+    ghostStep = best && createReplayer(ghost, best)
     hud.menu = false
     hud.skillMenu = false
     syncHud()
@@ -287,7 +343,7 @@ export function useGame(): GameContext {
 
   function useSkill(id: SkillId): void {
     hud.skillMenu = false // el motor ignora input en menú/pausa, así que cerrar primero
-    game.useSkill(id)
+    act(`useSkill:${id}`)
     syncHud()
   }
 
@@ -334,13 +390,13 @@ export function useGame(): GameContext {
         break
       case 'rotate':
       case 'rotateAlt':
-        game.rotate()
+        act('rotate')
         break
       case 'hardDrop':
-        game.hardDrop()
+        act('hardDrop')
         break
       case 'hold':
-        game.holdPiece()
+        act('holdPiece')
         break
       case 'skills':
         openSkillMenu()
@@ -380,6 +436,7 @@ export function useGame(): GameContext {
   syncHud()
   return {
     game,
+    ghost,
     effects,
     hud,
     settings,

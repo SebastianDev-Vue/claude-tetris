@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { MAX_COMBO_MULTIPLIER } from '../engine/constants'
 import { QUEUE_SIZE } from '../engine/skills'
 import { useGameContext } from '../composables/useGame'
+import { ghostDiffLabel } from '../composables/useGhosts'
 import { keyLabel } from '../composables/useSettings'
 import PiecePreview from './PiecePreview.vue'
 
@@ -12,6 +13,8 @@ const { game, hud, settings } = useGameContext()
 const comboLabel = computed(() =>
   hud.combo >= 2 ? `x${Math.min(hud.combo, MAX_COMBO_MULTIPLIER)}` : '—',
 )
+
+const ghostDiff = computed(() => ghostDiffLabel(hud.ghostDiff))
 </script>
 
 <template>
@@ -19,6 +22,11 @@ const comboLabel = computed(() =>
     <div class="panel-section">
       <span class="label">SCORE</span>
       <span class="value">{{ hud.score.toLocaleString() }}</span>
+      <!-- Color, y también signo y flecha: no depende solo del color -->
+      <div v-if="hud.hasGhost" class="ghost-diff" :class="`ghost-diff--${ghostDiff.trend}`">
+        <span class="ghost-diff-value">{{ ghostDiff.text }}</span>
+        <span class="ghost-diff-note">{{ ghostDiff.note }}</span>
+      </div>
     </div>
     <div class="panel-row">
       <div class="panel-section">
@@ -79,6 +87,37 @@ const comboLabel = computed(() =>
 </template>
 
 <style scoped>
+/* ---- Diferencia con el fantasma ---- */
+.ghost-diff {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ghost-diff-value {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.ghost-diff-note {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.ghost-diff--ahead .ghost-diff-value {
+  color: var(--win);
+}
+
+.ghost-diff--behind .ghost-diff-value {
+  color: var(--danger);
+}
+
+.ghost-diff--tied .ghost-diff-value {
+  color: var(--muted);
+}
+
 /* ---- Combo ---- */
 .combo-row {
   display: flex;

@@ -129,13 +129,16 @@ function drawRetroBlock(
   }
 }
 
+/** shadowBlur ignora la transformación del canvas: en el mini tablero hay que reducirlo a mano. */
+const blurScale = (ctx: Ctx): number => ctx.getTransform().a
+
 /** Neón: interior oscuro translúcido y borde brillante con halo (shadowBlur) del color de la pieza. */
 function drawNeonBlock(ctx: Ctx, px: number, py: number, color: string, size: number): void {
   ctx.save()
   ctx.fillStyle = color + '33'
   ctx.fillRect(px + 2, py + 2, size - 4, size - 4)
   ctx.shadowColor = color
-  ctx.shadowBlur = size / 2
+  ctx.shadowBlur = (size / 2) * blurScale(ctx)
   ctx.strokeStyle = color
   ctx.lineWidth = 2
   ctx.strokeRect(px + 3, py + 3, size - 6, size - 6)
@@ -246,7 +249,7 @@ function withSpecialGlow(
   if (retro || !specialKind(type)) return draw()
   ctx.save()
   ctx.shadowColor = COLORS[type] ?? '#fff'
-  ctx.shadowBlur = 10 + 6 * Math.sin(now / 160)
+  ctx.shadowBlur = (10 + 6 * Math.sin(now / 160)) * blurScale(ctx)
   draw()
   ctx.restore()
 }

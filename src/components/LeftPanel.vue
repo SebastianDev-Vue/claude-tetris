@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useGameContext } from '../composables/useGame'
 import { keyLabel } from '../composables/useSettings'
+import GhostBoard from './GhostBoard.vue'
 import PiecePreview from './PiecePreview.vue'
 
 const { game, hud, settings } = useGameContext()
@@ -29,7 +30,8 @@ const { game, hud, settings } = useGameContext()
       <span class="info">{{ hud.time }}</span>
     </div>
 
-    <div class="panel-section controls">
+    <GhostBoard v-if="hud.hasGhost" />
+    <div v-else class="panel-section controls">
       <span class="label">CONTROLS</span>
       <ul>
         <li>
@@ -55,6 +57,7 @@ const { game, hud, settings } = useGameContext()
         <li><kbd>P</kbd> pausa</li>
         <li><kbd>M</kbd> sonido: {{ hud.muted ? 'off' : 'on' }}</li>
       </ul>
+      <p class="ghost-hint">Termina una partida para correr contra tu mejor marca</p>
     </div>
   </aside>
 </template>
@@ -74,6 +77,12 @@ const { game, hud, settings } = useGameContext()
   display: flex;
   align-items: center;
   gap: var(--space-1);
+}
+
+.ghost-hint {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
 }
 
 /* ---- Panel izquierdo ---- */
