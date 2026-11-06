@@ -562,6 +562,7 @@ kbd {
 }
 
 :root[data-style='retro'] .value,
+:root[data-style='retro'] .countdown,
 :root[data-style='retro'] .overlay-title {
   text-shadow: none;
   font-weight: 400;

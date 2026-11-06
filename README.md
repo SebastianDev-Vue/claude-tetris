@@ -182,6 +182,10 @@ bun run preview    # sirve dist/ localmente
 | `E`       | Menú de habilidades (con la barra de energía llena) |
 | `R`       | Pasar a la siguiente skin          |
 
+Las teclas de juego (mover, bajar, rotar, caída, hold y habilidades) se pueden cambiar en **Pausa → Ajustes**, junto con el retardo inicial (DAS) y la velocidad de repetición (ARR) al mantener mover o bajar; se guardan en el navegador. `R`, `M`, `P`, `Esc`, los números y `Shift` no se pueden asignar.
+
+La partida se pausa sola al perder el foco o cambiar de pestaña. Al reanudar hay una cuenta atrás 3-2-1; pausar durante la cuenta la cancela.
+
 ---
 
 ## Cómo funciona

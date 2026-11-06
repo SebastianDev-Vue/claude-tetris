@@ -4,13 +4,26 @@ import { MODES } from '../engine/challenges'
 import { SKILLS, type SkillId } from '../engine/skills'
 import { useGameContext } from '../composables/useGame'
 import { NAME_MAX_LENGTH, useRecords } from '../composables/useRecords'
+import { keyLabel } from '../composables/useSettings'
 import RecordsTable from './RecordsTable.vue'
+import SettingsPanel from './SettingsPanel.vue'
 
-const { hud, start, restart, openMenu, togglePause, setStartLevel, useSkill, closeSkillMenu } =
-  useGameContext()
+const {
+  hud,
+  settings,
+  start,
+  restart,
+  openMenu,
+  togglePause,
+  setStartLevel,
+  useSkill,
+  closeSkillMenu,
+} = useGameContext()
 
 /** Lista de teclas desplegada dentro del menú de pausa. */
 const showControls = ref(false)
+/** Panel de ajustes en lugar del contenido del menú de pausa. */
+const showSettings = ref(false)
 
 /** Aplica el nivel elegido y suelta el foco: las flechas no deben seguir cambiándolo. */
 function pickLevel(e: Event): void {
@@ -19,12 +32,13 @@ function pickLevel(e: Event): void {
   select.blur()
 }
 
-type Screen = 'menu' | 'over' | 'skills' | 'pause' | null
+type Screen = 'menu' | 'over' | 'skills' | 'countdown' | 'pause' | null
 
 const screen = computed<Screen>(() => {
   if (hud.menu) return 'menu'
   if (hud.gameOver) return 'over'
   if (hud.skillMenu) return 'skills'
+  if (hud.countdown > 0) return 'countdown'
   if (hud.paused) return 'pause'
   return null
 })
@@ -80,7 +94,11 @@ const vFocus = { mounted: (el: HTMLElement) => el.focus() }
 
 <template>
   <Transition name="fade">
-    <div v-if="screen" class="overlay" :class="{ 'overlay--menu': screen === 'menu' }">
+    <div
+      v-if="screen"
+      class="overlay"
+      :class="{ 'overlay--menu': screen === 'menu', 'overlay--countdown': screen === 'countdown' }"
+    >
       <Transition name="slide" mode="out-in">
         <!-- Selección de modo -->
         <div v-if="screen === 'menu'" key="menu" class="overlay-box">
@@ -161,6 +179,18 @@ const vFocus = { mounted: (el: HTMLElement) => el.focus() }
           </button>
         </div>
 
+        <!-- Cuenta atrás al reanudar: deja ver el tablero -->
+        <div v-else-if="screen === 'countdown'" key="countdown" role="status">
+          <!-- :key: cada número relanza la animación -->
+          <p :key="hud.countdown" class="countdown">{{ hud.countdown }}</p>
+        </div>
+
+        <!-- Ajustes (dentro de la pausa) -->
+        <div v-else-if="showSettings" key="settings" class="overlay-box">
+          <p class="overlay-title overlay-title--accent">AJUSTES</p>
+          <SettingsPanel @close="showSettings = false" />
+        </div>
+
         <!-- Pausa -->
         <div v-else key="pause" class="overlay-box">
           <p class="overlay-title">PAUSA</p>
@@ -182,21 +212,44 @@ const vFocus = { mounted: (el: HTMLElement) => el.focus() }
             </select>
           </label>
           <p class="pause-hint">Se aplica al reiniciar o al empezar otra partida</p>
-          <button
-            class="restart-btn secondary"
-            type="button"
-            :aria-expanded="showControls"
-            @click="run(() => (showControls = !showControls), $event)"
-          >
-            {{ showControls ? 'Ocultar controles' : 'Ver controles' }}
-          </button>
+          <div class="overlay-actions">
+            <button
+              class="restart-btn secondary"
+              type="button"
+              :aria-expanded="showControls"
+              @click="run(() => (showControls = !showControls), $event)"
+            >
+              {{ showControls ? 'Ocultar controles' : 'Ver controles' }}
+            </button>
+            <button
+              class="restart-btn secondary"
+              type="button"
+              @click="run(() => (showSettings = true), $event)"
+            >
+              Ajustes
+            </button>
+          </div>
           <ul v-if="showControls" class="pause-controls">
-            <li><kbd>←</kbd><kbd>→</kbd> mover</li>
-            <li><kbd>↑</kbd><kbd>X</kbd> rotar</li>
-            <li><kbd>↓</kbd> bajar</li>
-            <li><kbd>Space</kbd> caída</li>
-            <li><kbd>C</kbd> hold</li>
-            <li><kbd>E</kbd> habilidades</li>
+            <li>
+              <kbd>{{ keyLabel(settings.values.keys.left) }}</kbd>
+              <kbd>{{ keyLabel(settings.values.keys.right) }}</kbd> mover
+            </li>
+            <li>
+              <kbd>{{ keyLabel(settings.values.keys.rotate) }}</kbd>
+              <kbd>{{ keyLabel(settings.values.keys.rotateAlt) }}</kbd> rotar
+            </li>
+            <li>
+              <kbd>{{ keyLabel(settings.values.keys.down) }}</kbd> bajar
+            </li>
+            <li>
+              <kbd>{{ keyLabel(settings.values.keys.hardDrop) }}</kbd> caída
+            </li>
+            <li>
+              <kbd>{{ keyLabel(settings.values.keys.hold) }}</kbd> hold
+            </li>
+            <li>
+              <kbd>{{ keyLabel(settings.values.keys.skills) }}</kbd> habilidades
+            </li>
             <li><kbd>P</kbd><kbd>Esc</kbd> pausa</li>
             <li><kbd>M</kbd> sonido: {{ hud.muted ? 'off' : 'on' }}</li>
           </ul>
@@ -304,6 +357,34 @@ const vFocus = { mounted: (el: HTMLElement) => el.focus() }
 /* La pantalla de menú tapa más el tablero para que se lea bien */
 .overlay--menu {
   background: var(--menu-bg);
+}
+
+/* La cuenta atrás deja ver el tablero para volver a situarse */
+.overlay--countdown {
+  background: transparent;
+  backdrop-filter: none;
+  pointer-events: none;
+}
+
+.countdown {
+  font-family: var(--font-display);
+  font-size: 96px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--text);
+  text-shadow:
+    0 0 6px var(--canvas-bg),
+    0 0 18px var(--canvas-bg),
+    0 0 28px var(--accent);
+  /* con prefers-reduced-motion la regla global de style.css la anula */
+  animation: countdown-pop 1s var(--ease-out);
+}
+
+@keyframes countdown-pop {
+  from {
+    transform: scale(1.5);
+    opacity: 0.3;
+  }
 }
 
 /* Campos de formulario del overlay (nombre del récord, selectores).
