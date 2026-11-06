@@ -639,10 +639,14 @@ kbd {
 
 /* ==== Tabla de récords (menú de inicio y game over) ==== */
 
-/* En pantallas estrechas no hay hueco a la derecha: va al final de la página */
-@media (max-width: 1100px) {
+/* Mismo corte que .records-panel: el juego ocupa toda la fila y los récords bajan a la siguiente */
+@media (max-width: 1260px) {
   body {
     flex-wrap: wrap;
+  }
+
+  #app {
+    width: 100%;
   }
 }
 
