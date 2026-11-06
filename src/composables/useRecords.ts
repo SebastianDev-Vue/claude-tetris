@@ -90,6 +90,12 @@ export function useRecords() {
     records,
     bestCombo,
     maxLines,
+    /**
+     * Mejor puntuación guardada del modo (null si no hay).
+     * shortcut: solo ve el top 5 global, un modo expulsado de la tabla cuenta como sin marca;
+     * para evitarlo habría que guardar la mejor marca de cada modo aparte.
+     */
+    bestFor: (mode: GameMode) => records.value.find((r) => r.mode === mode)?.score ?? null,
     qualifies: (score: number) => qualifies(records.value, score),
     save,
     clear,

@@ -1,4 +1,12 @@
-import { inject, markRaw, onMounted, onUnmounted, reactive, type InjectionKey } from 'vue'
+import {
+  inject,
+  markRaw,
+  onMounted,
+  onUnmounted,
+  reactive,
+  type InjectionKey,
+  type ShallowRef,
+} from 'vue'
 import { Game } from '../engine/game'
 import { isPowerUp } from '../engine/constants'
 import { MODES, formatTime, type GameMode } from '../engine/challenges'
@@ -8,6 +16,7 @@ import { Sfx } from '../audio/sfx'
 import { KeyRepeat, type RepeatDir } from '../engine/keyRepeat'
 import { hotkeysBlocked } from './useTheme'
 import { actionForKey, useSettings, type SettingsContext } from './useSettings'
+import { useRunStats, type RunStats } from './useRunStats'
 
 // Tope del dt por frame: al volver de una pestaña oculta rAF entrega minutos de golpe
 const MAX_FRAME_MS = 100
@@ -70,6 +79,8 @@ export interface GameContext {
   hud: Hud
   /** Tiempos de repetición y teclas de juego configurables. */
   settings: SettingsContext
+  /** Informe de la partida en curso. */
+  runStats: ShallowRef<RunStats>
   /** Suscribe un dibujado por frame; devuelve la función para darse de baja. */
   onFrame: (fn: FrameListener) => () => void
   /** Empieza una partida nueva en el modo indicado. */
@@ -113,11 +124,13 @@ function powerUpLabel(game: Game): string {
 export function useGame(): GameContext {
   const effects = new Effects()
   const sfx = new Sfx()
+  const run = useRunStats(() => game)
   const game = markRaw(
     new Game({
       onEvent: (e) => {
         effects.handle(e, performance.now())
         sfx.handle(e)
+        run.handle(e)
       },
     }),
   )
@@ -224,6 +237,7 @@ export function useGame(): GameContext {
     // Limpiar antes de reset(): reset() ya puede anunciar una primera pieza especial
     effects.clear()
     game.reset(mode)
+    run.reset()
     hud.menu = false
     hud.skillMenu = false
     syncHud()
@@ -369,6 +383,7 @@ export function useGame(): GameContext {
     effects,
     hud,
     settings,
+    runStats: run.stats,
     onFrame,
     start,
     restart,

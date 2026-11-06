@@ -5,12 +5,15 @@ import { SKILLS, type SkillId } from '../engine/skills'
 import { useGameContext } from '../composables/useGame'
 import { NAME_MAX_LENGTH, useRecords } from '../composables/useRecords'
 import { keyLabel } from '../composables/useSettings'
+import { linesPerMinute } from '../composables/useRunStats'
 import RecordsTable from './RecordsTable.vue'
+import ScoreCurve from './ScoreCurve.vue'
 import SettingsPanel from './SettingsPanel.vue'
 
 const {
   hud,
   settings,
+  runStats,
   start,
   restart,
   openMenu,
@@ -54,19 +57,48 @@ function unavailable(id: SkillId): boolean {
   return (id === 'undo' && !hud.canUndo) || (id === 'hold' && (!hud.holdUsed || !hud.holdFits))
 }
 
-const { records, bestCombo, maxLines, qualifies, save, clear } = useRecords()
+const { records, bestCombo, maxLines, bestFor, qualifies, save, clear } = useRecords()
 const playerName = ref('')
 /** Fila guardada en esta partida (-1 = aún sin guardar). */
 const savedIndex = ref(-1)
 const canSave = computed(() => savedIndex.value < 0 && qualifies(hud.score))
+/** Marca del modo al acabar: se congela para que guardar esta partida no la cambie. */
+const previousBest = ref<number | null>(null)
 
 // Cada game over empieza sin guardar
 watch(
   () => hud.gameOver,
   (over) => {
-    if (over) savedIndex.value = -1
+    if (!over) return
+    savedIndex.value = -1
+    previousBest.value = bestFor(hud.mode)
   },
 )
+
+const modeName = computed(() => MODES.find((m) => m.id === hud.mode)?.name ?? '')
+
+const comparison = computed(() => {
+  if (previousBest.value === null) return 'Primera marca en este modo'
+  const diff = hud.score - previousBest.value
+  if (diff === 0) return 'Igualas tu mejor marca'
+  const amount = Math.abs(diff).toLocaleString()
+  return diff > 0 ? `+${amount} sobre tu mejor marca` : `−${amount} bajo tu mejor marca`
+})
+
+const reportItems = computed(() => {
+  const s = runStats.value
+  return [
+    { label: 'Tetris', value: s.tetrises },
+    { label: 'T-spin', value: s.tspins },
+    { label: 'Combo', value: `x${s.bestCombo}` },
+    { label: 'Perfect', value: s.perfects },
+    { label: 'Piezas', value: s.pieces },
+    {
+      label: 'Líneas/min',
+      value: linesPerMinute(s).toLocaleString(undefined, { maximumFractionDigits: 1 }),
+    },
+  ]
+})
 
 function saveRecord(): void {
   if (!canSave.value) return
@@ -85,6 +117,7 @@ function clearRecords(): void {
   if (confirm('¿Borrar todos los récords?')) {
     clear()
     savedIndex.value = -1
+    previousBest.value = null
   }
 }
 
@@ -117,30 +150,51 @@ const vFocus = { mounted: (el: HTMLElement) => el.focus() }
         </div>
 
         <!-- Fin de partida -->
-        <div v-else-if="screen === 'over'" key="over" class="overlay-box">
+        <div v-else-if="screen === 'over'" key="over" class="overlay-box overlay-box--over">
           <p class="overlay-title" :class="{ 'overlay-title--win': hud.won }">
             {{ hud.won ? '¡OBJETIVO CUMPLIDO!' : 'GAME OVER' }}
           </p>
-          <p v-if="hud.challengeName" class="overlay-sub">{{ hud.challengeName }}</p>
+          <p class="overlay-sub">{{ modeName }}</p>
           <p v-if="hud.endReason && !hud.won" class="overlay-sub">{{ hud.endReason }}</p>
-          <p class="overlay-score">
-            Puntuación: {{ hud.score.toLocaleString() }} · Tiempo: {{ hud.time }}
-          </p>
+          <div class="report">
+            <div class="report-summary">
+              <p class="report-score">{{ hud.score.toLocaleString() }}</p>
+              <p class="report-line">Tiempo: {{ hud.time }}</p>
+              <p class="report-line">{{ comparison }}</p>
+              <p class="report-line">
+                <template v-if="runStats.bestPlay">
+                  Tu mejor jugada: {{ runStats.bestPlay.label }}, +{{
+                    runStats.bestPlay.points.toLocaleString()
+                  }}
+                </template>
+                <template v-else>Sin jugadas puntuables</template>
+              </p>
+              <dl class="report-stats">
+                <div v-for="item in reportItems" :key="item.label">
+                  <dd>{{ item.value }}</dd>
+                  <dt>{{ item.label }}</dt>
+                </div>
+              </dl>
+            </div>
+            <ScoreCurve :samples="runStats.samples" :level-ups="runStats.levelUps" />
+          </div>
           <div v-if="canSave" class="record-form">
             <p class="record-qualifies">¡Entras en el top 5! Escribe tu nombre:</p>
-            <input
-              v-model="playerName"
-              v-focus
-              class="record-input"
-              type="text"
-              :maxlength="NAME_MAX_LENGTH"
-              placeholder="Jugador"
-              aria-label="Nombre del jugador"
-              @keydown.enter="saveRecord"
-            />
-            <button class="restart-btn" type="button" @click="run(saveRecord, $event)">
-              Guardar
-            </button>
+            <div class="record-row">
+              <input
+                v-model="playerName"
+                v-focus
+                class="record-input"
+                type="text"
+                :maxlength="NAME_MAX_LENGTH"
+                placeholder="Jugador"
+                aria-label="Nombre del jugador"
+                @keydown.enter="saveRecord"
+              />
+              <button class="restart-btn" type="button" @click="run(saveRecord, $event)">
+                Guardar récord
+              </button>
+            </div>
           </div>
           <p v-else-if="savedIndex >= 0" class="record-new-msg">¡Nuevo récord!</p>
           <div class="overlay-actions">
@@ -313,16 +367,94 @@ const vFocus = { mounted: (el: HTMLElement) => el.focus() }
   margin-bottom: var(--space-1);
 }
 
-.overlay-score {
+/* ---- Fin de partida: resumen y curva en paralelo, en una columna si no hay ancho ---- */
+.overlay-box--over {
+  width: 660px;
+  max-height: 100%;
+  overflow-y: auto;
+  padding: var(--space-4);
+  gap: var(--space-2);
+}
+
+.overlay-box--over .overlay-title {
+  font-size: 26px;
+  margin-bottom: 0;
+}
+
+.overlay-box--over .restart-btn {
+  margin-top: 0;
+}
+
+.report {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: var(--space-3);
+  align-items: start;
+}
+
+/* font-size-adjust encoge la letra bitmap, pero sin esto las líneas se pisan */
+:root[data-style='retro'] .overlay-box--over {
+  line-height: 1.8;
+}
+
+.report-summary {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  text-align: left;
+}
+
+.report-score {
   font-family: var(--font-mono);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 36px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.report-line {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.report-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.report-stats dd {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: var(--accent);
-  padding: var(--space-2) var(--space-4);
-  background: var(--surface);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-pill);
+  color: var(--text);
+}
+
+.report-stats dt {
+  font-size: 11px;
+  color: var(--label);
+}
+
+@media (max-width: 760px) {
+  .report {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+
+  .report-summary {
+    width: 100%;
+  }
+
+  /* El SVG escala con el ancho: sin tope, a 700 px la curva y sus textos quedan enormes */
+  .score-curve {
+    width: 100%;
+    max-width: 440px;
+  }
 }
 
 .overlay-actions {
@@ -582,8 +714,8 @@ const vFocus = { mounted: (el: HTMLElement) => el.focus() }
   backdrop-filter: blur(14px) saturate(140%);
 }
 
-/* En pantallas estrechas no hay hueco a la derecha: va al final de la página */
-@media (max-width: 1100px) {
+/* Sin hueco a la derecha de la pantalla de fin (660 px centrados): va al final de la página */
+@media (max-width: 1260px) {
   .records-panel {
     position: static;
     margin: var(--space-4) auto;
@@ -595,6 +727,14 @@ const vFocus = { mounted: (el: HTMLElement) => el.focus() }
   flex-direction: column;
   align-items: center;
   gap: 6px;
+}
+
+.record-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .record-qualifies,
