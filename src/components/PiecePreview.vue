@@ -11,6 +11,8 @@ const props = withDefaults(
     piece: () => Piece | null
     cellSize?: number
     cells?: number
+    /** Nivel para la paleta 8-bit; por defecto el del jugador. */
+    level?: number
   }>(),
   { cellSize: 30, cells: 4 },
 )
@@ -23,7 +25,15 @@ let off: (() => void) | undefined
 onMounted(() => {
   const ctx = canvas.value!.getContext('2d')!
   off = onFrame((now) =>
-    drawPreview(ctx, props.piece(), props.cellSize, props.cells, now, skin.value, hud.level),
+    drawPreview(
+      ctx,
+      props.piece(),
+      props.cellSize,
+      props.cells,
+      now,
+      skin.value,
+      props.level ?? hud.level,
+    ),
   )
 })
 

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { useGameContext } from '../composables/useGame'
+import { keyLabel } from '../composables/useSettings'
 import PiecePreview from './PiecePreview.vue'
 
-const { game, hud } = useGameContext()
+const { game, hud, settings } = useGameContext()
 </script>
 
 <template>
@@ -17,7 +18,9 @@ const { game, hud } = useGameContext()
 
     <!-- Atenuado mientras HOLD ya se ha usado en este turno -->
     <div class="panel-section hold-slot" :class="{ locked: hud.holdUsed }">
-      <span class="label">HOLD <kbd>C</kbd></span>
+      <span class="label"
+        >HOLD <kbd>{{ keyLabel(settings.values.keys.hold) }}</kbd></span
+      >
       <PiecePreview :piece="() => game.hold" />
     </div>
 
@@ -29,15 +32,32 @@ const { game, hud } = useGameContext()
     <div class="panel-section controls">
       <span class="label">CONTROLS</span>
       <ul>
-        <li><kbd>←</kbd><kbd>→</kbd> mover</li>
-        <li><kbd>↑</kbd> rotar</li>
-        <li><kbd>↓</kbd> bajar</li>
-        <li><kbd>Space</kbd> caída</li>
-        <li><kbd>C</kbd> hold</li>
-        <li><kbd>E</kbd> habilidades</li>
+        <li>
+          <kbd>{{ keyLabel(settings.values.keys.left) }}</kbd>
+          <kbd>{{ keyLabel(settings.values.keys.right) }}</kbd> mover
+        </li>
+        <li>
+          <kbd>{{ keyLabel(settings.values.keys.rotate) }}</kbd>
+          <kbd>{{ keyLabel(settings.values.keys.rotateAlt) }}</kbd> rotar
+        </li>
+        <li>
+          <kbd>{{ keyLabel(settings.values.keys.down) }}</kbd> bajar
+        </li>
+        <li>
+          <kbd>{{ keyLabel(settings.values.keys.hardDrop) }}</kbd> caída
+        </li>
+        <li>
+          <kbd>{{ keyLabel(settings.values.keys.hold) }}</kbd> hold
+        </li>
+        <li>
+          <kbd>{{ keyLabel(settings.values.keys.skills) }}</kbd> habilidades
+        </li>
         <li><kbd>P</kbd> pausa</li>
         <li><kbd>M</kbd> sonido: {{ hud.muted ? 'off' : 'on' }}</li>
       </ul>
+      <p v-if="settings.values.versusGhost && !hud.hasGhost" class="ghost-hint">
+        Termina una partida para correr contra tu mejor marca
+      </p>
     </div>
   </aside>
 </template>
@@ -57,6 +77,12 @@ const { game, hud } = useGameContext()
   display: flex;
   align-items: center;
   gap: var(--space-1);
+}
+
+.ghost-hint {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
 }
 
 /* ---- Panel izquierdo ---- */

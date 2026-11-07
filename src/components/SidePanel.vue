@@ -3,9 +3,10 @@ import { computed } from 'vue'
 import { MAX_COMBO_MULTIPLIER } from '../engine/constants'
 import { QUEUE_SIZE } from '../engine/skills'
 import { useGameContext } from '../composables/useGame'
+import { keyLabel } from '../composables/useSettings'
 import PiecePreview from './PiecePreview.vue'
 
-const { game, hud } = useGameContext()
+const { game, hud, settings } = useGameContext()
 
 /** El combo se muestra como multiplicador a partir del segundo clear encadenado. */
 const comboLabel = computed(() =>
@@ -49,7 +50,9 @@ const comboLabel = computed(() =>
         <div class="energy-fill" :style="{ width: `${hud.energy}%` }"></div>
       </div>
       <Transition name="pop">
-        <span v-if="hud.energyFull" class="info energy-hint"><kbd>E</kbd> habilidades</span>
+        <span v-if="hud.energyFull" class="info energy-hint">
+          <kbd>{{ keyLabel(settings.values.keys.skills) }}</kbd> habilidades
+        </span>
       </Transition>
     </div>
     <div class="panel-section">

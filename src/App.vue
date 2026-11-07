@@ -7,8 +7,11 @@ import SidePanel from './components/SidePanel.vue'
 import LeftPanel from './components/LeftPanel.vue'
 import GameOverlay from './components/GameOverlay.vue'
 import ThemeToggle from './components/ThemeToggle.vue'
+import RivalBoard from './components/RivalBoard.vue'
+import RivalPanel from './components/RivalPanel.vue'
 
-provide(GameKey, useGame())
+const game = useGame()
+provide(GameKey, game)
 provide(ThemeKey, useTheme())
 </script>
 
@@ -24,8 +27,35 @@ provide(ThemeKey, useTheme())
         <LeftPanel />
         <GameBoard />
         <SidePanel />
+        <!-- Solo contra el fantasma; si no, la pantalla es la de un jugador -->
+        <div v-if="game.hud.hasGhost" class="rival-side">
+          <RivalBoard />
+          <RivalPanel />
+        </div>
       </div>
       <GameOverlay />
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Si los dos tableros no caben en una fila, el rival baja entero debajo del jugador */
+.game-container:has(.rival-side) {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.rival-side {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-5);
+  max-width: 100%;
+}
+
+@media (max-width: 760px) {
+  .rival-side {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+</style>

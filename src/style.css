@@ -562,6 +562,7 @@ kbd {
 }
 
 :root[data-style='retro'] .value,
+:root[data-style='retro'] .countdown,
 :root[data-style='retro'] .overlay-title {
   text-shadow: none;
   font-weight: 400;
@@ -639,10 +640,14 @@ kbd {
 
 /* ==== Tabla de récords (menú de inicio y game over) ==== */
 
-/* En pantallas estrechas no hay hueco a la derecha: va al final de la página */
-@media (max-width: 1100px) {
+/* Mismo corte que .records-panel: el juego ocupa toda la fila y los récords bajan a la siguiente */
+@media (max-width: 1260px) {
   body {
     flex-wrap: wrap;
+  }
+
+  #app {
+    width: 100%;
   }
 }
 
@@ -667,4 +672,19 @@ kbd {
   --btn-hover: #7ff3ff;
   --grid: #0c1420;
   --menu-bg: rgba(0, 0, 0, 0.92);
+}
+
+/* ---- Skin pizarra ---- */
+/* Pizarra verde oscura con rejilla de tiza casi invisible. */
+:root[data-skin='chalk'] {
+  --canvas-bg: #1f3a32;
+  --grid: rgba(255, 255, 255, 0.08);
+}
+
+/* Velo de borrado: restos de tiza mal borrada, algo más claros hacia el centro. */
+:root[data-skin='chalk'] #board {
+  background:
+    radial-gradient(ellipse at 40% 35%, rgba(255, 255, 255, 0.07), transparent 60%),
+    linear-gradient(170deg, rgba(255, 255, 255, 0.04), transparent 40%, rgba(255, 255, 255, 0.03)),
+    var(--canvas-bg);
 }

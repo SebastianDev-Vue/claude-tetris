@@ -1,9 +1,11 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { BOMB, COLORS, GARBAGE } from '@/engine/constants'
+import { BOMB, COLORS, GARBAGE, HOLLOW } from '@/engine/constants'
 import { Game } from '@/engine/game'
 import {
+  chalkNoise,
   drawBlock,
+  lighten,
   drawBoard,
   drawPreview,
   pastelColor,
@@ -23,7 +25,9 @@ interface Call {
 /** Contexto 2D falso que registra cada llamada junto al fillStyle vigente. */
 function recordingContext() {
   const calls: Call[] = []
-  const state: Record<string | symbol, unknown> = { canvas: { width: 300, height: 600 } }
+  const state: Record<string | symbol, unknown> = {
+    canvas: { width: 300, height: 600 },
+  }
   const ctx = new Proxy(state, {
     get(target, key) {
       if (key in target) return target[key]
@@ -159,6 +163,39 @@ describe('skins', () => {
     const { ctx, named } = recordingContext()
     drawPreview(ctx, new Game({ random: () => 0.5 }).makePiece(1), 30, 4, 0, 'pastel')
     expect(named('roundRect')).toHaveLength(4)
+  })
+
+  it('pizarra: el ruido es determinista por celda y queda en 0..1', () => {
+    expect(chalkNoise(3, 4, 1, 2)).toBe(chalkNoise(3, 4, 1, 2))
+    expect(chalkNoise(3, 4, 1)).not.toBe(chalkNoise(3, 5, 1))
+    expect(chalkNoise(3, 4, 1)).not.toBe(chalkNoise(3, 4, 2))
+    for (let i = 0; i < 50; i++) {
+      const n = chalkNoise(i, 7, 5, i)
+      expect(n).toBeGreaterThanOrEqual(0)
+      expect(n).toBeLessThan(1)
+    }
+  })
+
+  it('pizarra: el mismo bloque se dibuja idéntico en dos frames', () => {
+    const a = recordingContext()
+    const b = recordingContext()
+    drawBlock(a.ctx, 2, 5, 3, 30, 1, 'chalk')
+    drawBlock(b.ctx, 2, 5, 3, 30, 1, 'chalk')
+    expect(a.calls).toEqual(b.calls)
+    expect(a.ctx.strokeStyle).toBe(lighten(COLORS[3]!, 0.35))
+    expect(a.named('clip')).toHaveLength(1) // trazos diagonales recortados
+  })
+
+  it('pizarra: fantasma solo con contorno discontinuo y especiales con halo blanco', () => {
+    const g = new Game({ random: () => 0.5 })
+    g.current = g.makePiece(HOLLOW)
+    const { ctx, named } = recordingContext()
+    drawBoard(ctx, g, opts('chalk'), 0)
+    const cells = 8 // el hueco 3×3 tiene 8 celdas
+    expect(named('setLineDash')).toHaveLength(cells)
+    expect(named('clip')).toHaveLength(cells) // solo la pieza real lleva relleno
+    expect(named('fill')).toHaveLength(0)
+    expect(ctx.shadowColor).toBe('rgba(255,255,255,0.6)')
   })
 
   it('el tablero en neón conserva rejilla y fantasma', () => {

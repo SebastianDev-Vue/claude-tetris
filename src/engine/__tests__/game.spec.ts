@@ -200,6 +200,20 @@ describe('nivel inicial', () => {
     expect(g.startLevel).toBe(1)
   })
 
+  it('cambiar el ajuste en plena partida no afecta a la partida en curso', () => {
+    const g = newGame()
+    g.setStartLevel(3)
+    g.reset()
+    g.setStartLevel(8) // desde el menú de pausa: «se aplica al reiniciar»
+    g.board[ROWS - 1] = fullRow().map((v, c) => (c === COLS - 1 ? 0 : v))
+    g.setCell(ROWS - 2, 0, 5)
+    place(g, 1, COLS - 4, ROWS - 2)
+    expect(g.lines).toBeGreaterThan(0)
+    expect(g.level).toBe(3)
+    g.reset()
+    expect(g.level).toBe(8)
+  })
+
   it('las líneas no bajan del nivel inicial y suben al superarlo', () => {
     const events: GameEvent[] = []
     const g = newGame(events)

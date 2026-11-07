@@ -48,6 +48,7 @@ import {
   skillInfo,
   type SkillId,
 } from './skills'
+import { createRng } from './rng'
 
 export type Board = number[][]
 export type Shape = number[][]
@@ -172,6 +173,8 @@ export class Game {
   level = 1
   /** Nivel con el que empieza la próxima partida (1–10); lo aplica reset(). */
   startLevel = 1
+  /** Nivel con el que empezó la partida en curso: el menú de pausa solo cambia `startLevel`. */
+  baseLevel = 1
   paused = false
   gameOver = false
   dropInterval = INITIAL_DROP_INTERVAL
@@ -213,7 +216,7 @@ export class Game {
   holdUsed = false
   private snapshot: Snapshot | null = null
 
-  private readonly random: () => number
+  private random: () => number
   private readonly emit: (event: GameEvent) => void
 
   constructor(options: GameOptions = {}) {
@@ -265,8 +268,9 @@ export class Game {
     this.startLevel = Math.min(10, Math.max(1, Math.round(level)))
   }
 
-  /** Único camino de reinicio. Sin argumento repite el modo actual. */
-  reset(mode: GameMode = this.mode): void {
+  /** Único camino de reinicio. Sin modo repite el actual; con semilla vuelve a sembrar el azar. */
+  reset(mode: GameMode = this.mode, seed?: number): void {
+    if (seed !== undefined) this.random = createRng(seed)
     this.mode = mode
     this.elapsedMs = 0
     this.challengeMs = 0
@@ -275,7 +279,8 @@ export class Game {
     this.board = createBoard()
     this.score = 0
     this.lines = 0
-    this.level = this.startLevel
+    this.baseLevel = this.startLevel
+    this.level = this.baseLevel
     this.paused = false
     this.gameOver = false
     this.dropInterval = levelInterval(this.level)
@@ -633,7 +638,7 @@ export class Game {
     }
     if (cleared >= 4) this.pendingReward = true
     const prevLevel = this.level
-    this.level = Math.max(this.startLevel, Math.floor(this.lines / 10) + 1)
+    this.level = Math.max(this.baseLevel, Math.floor(this.lines / 10) + 1)
     if (this.level > prevLevel) this.onLevelUp(prevLevel)
     this.dropInterval = levelInterval(this.level)
     this.linesToPowerUp -= cleared

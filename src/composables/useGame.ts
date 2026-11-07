@@ -1,16 +1,30 @@
-import { inject, markRaw, onMounted, onUnmounted, reactive, type InjectionKey } from 'vue'
+import {
+  inject,
+  markRaw,
+  onMounted,
+  onUnmounted,
+  reactive,
+  type InjectionKey,
+  type ShallowRef,
+} from 'vue'
 import { Game } from '../engine/game'
 import { isPowerUp } from '../engine/constants'
 import { MODES, formatTime, type GameMode } from '../engine/challenges'
 import { SKILLS, type SkillId } from '../engine/skills'
 import { Effects } from '../render/effects'
 import { Sfx } from '../audio/sfx'
-import { isTypingTarget } from './useTheme'
+import { KeyRepeat, type RepeatDir } from '../engine/keyRepeat'
+import { hotkeysBlocked } from './useTheme'
+import { actionForKey, useSettings, type SettingsContext } from './useSettings'
+import { useRunStats, type RunStats } from './useRunStats'
+import { REPLAY_VERSION, STEP_MS, applyAction, createReplayer } from '../engine/replay'
+import type { Replay, ReplayAction } from '../engine/replay'
+import { loadGhost, saveGhost } from './useGhosts'
 
 // Tope del dt por frame: al volver de una pestaña oculta rAF entrega minutos de golpe
 const MAX_FRAME_MS = 100
-// Tras reanudar se ignoran las teclas de juego un instante para evitar movimientos accidentales
-const RESUME_GRACE_MS = 200
+/** Cuenta atrás 3-2-1 al reanudar. */
+const RESUME_COUNTDOWN_MS = 3000
 
 type FrameListener = (now: number) => void
 
@@ -20,6 +34,8 @@ export interface Hud {
   level: number
   powerUpInfo: string
   paused: boolean
+  /** Segundos de la cuenta atrás al reanudar (0 = sin cuenta). */
+  countdown: number
   gameOver: boolean
   /** Fijados consecutivos con líneas (el panel muestra el multiplicador desde 2). */
   combo: number
@@ -55,15 +71,30 @@ export interface Hud {
   time: string
   /** Nivel con el que empezará la próxima partida. */
   startLevel: number
+  /** Partida contra el fantasma: hay grabación de este modo y el jugador lo eligió en Ajustes. */
+  hasGhost: boolean
+  ghostScore: number
+  ghostLines: number
+  ghostLevel: number
+  /** El fantasma ya terminó: su tablero queda fijo y su puntuación es la final. */
+  ghostFinished: boolean
+  /** Puntos del jugador menos los del fantasma. */
+  ghostDiff: number
 }
 
 export interface GameContext {
   /** Instancia del motor. markRaw: Vue no debe envolver el tablero en proxies (se recorre cada frame). */
   game: Game
+  /** Mejor partida de este modo en reproducción; solo tiene sentido con `hud.hasGhost`. */
+  ghost: Game
   /** Efectos visuales pasajeros (popups, partículas, ondas) generados por eventos del motor. */
   effects: Effects
   /** Copia reactiva y plana de lo que muestra la interfaz; se sincroniza en cada frame. */
   hud: Hud
+  /** Tiempos de repetición y teclas de juego configurables. */
+  settings: SettingsContext
+  /** Informe de la partida en curso. */
+  runStats: ShallowRef<RunStats>
   /** Suscribe un dibujado por frame; devuelve la función para darse de baja. */
   onFrame: (fn: FrameListener) => () => void
   /** Empieza una partida nueva en el modo indicado. */
@@ -72,6 +103,7 @@ export interface GameContext {
   restart: () => void
   /** Vuelve a la pantalla de selección de modo. */
   openMenu: () => void
+  /** Pausa, o reanuda con cuenta atrás; durante la cuenta la cancela. */
   togglePause: () => void
   /** Nivel inicial de la próxima partida (1–10). */
   setStartLevel: (level: number) => void
@@ -106,20 +138,28 @@ function powerUpLabel(game: Game): string {
 export function useGame(): GameContext {
   const effects = new Effects()
   const sfx = new Sfx()
+  const run = useRunStats(() => game)
+  /** Grabación de la partida en curso; start() la sustituye, así que abandonar la descarta. */
+  let recording: Replay | null = null
   const game = markRaw(
     new Game({
       onEvent: (e) => {
         effects.handle(e, performance.now())
         sfx.handle(e)
+        run.handle(e)
+        if (e.type === 'finish' && recording) saveGhost({ ...recording, score: game.score })
       },
     }),
   )
+  // Sin onEvent: el fantasma no suena ni genera partículas
+  const ghost = markRaw(new Game())
   const hud = reactive<Hud>({
     score: 0,
     lines: 0,
     level: 1,
     powerUpInfo: '',
     paused: false,
+    countdown: 0,
     gameOver: false,
     combo: 0,
     maxCombo: 0,
@@ -142,13 +182,25 @@ export function useGame(): GameContext {
     holdFits: true,
     canUndo: false,
     startLevel: 1,
+    hasGhost: false,
+    ghostScore: 0,
+    ghostLines: 0,
+    ghostLevel: 1,
+    ghostFinished: false,
+    ghostDiff: 0,
   })
   const listeners = new Set<FrameListener>()
   let animId = 0
   let lastTime = 0
-  let resumedAt = -Infinity
-  /** Tras reanudar, la auto-repetición de una tecla ya pulsada no cuenta hasta una pulsación nueva. */
-  let ignoreRepeat = false
+  /** Tiempo restante de la cuenta atrás; el motor sigue en pausa hasta que llega a 0. */
+  let countdownMs = 0
+  const settings = useSettings()
+  const keyRepeat = new KeyRepeat(settings.values)
+  /** Tiempo real aún sin convertir en pasos de simulación. */
+  let accumulator = 0
+  /** Pasos simulados de esta partida: solo suben con update() reales, es el reloj de la grabación. */
+  let steps = 0
+  let ghostStep: (() => void) | null = null
 
   function syncHud(): void {
     // Asignar el mismo valor primitivo no dispara re-render en Vue
@@ -157,6 +209,7 @@ export function useGame(): GameContext {
     hud.level = game.level
     hud.powerUpInfo = powerUpLabel(game)
     hud.paused = game.paused
+    hud.countdown = Math.ceil(countdownMs / 1000)
     hud.gameOver = game.gameOver
     hud.combo = game.combo
     hud.maxCombo = game.maxCombo
@@ -177,10 +230,52 @@ export function useGame(): GameContext {
     hud.holdFits = game.holdFits
     hud.canUndo = game.canUndo
     hud.startLevel = game.startLevel
+    hud.hasGhost = ghostStep !== null
+    hud.ghostScore = ghost.score
+    hud.ghostLines = ghost.lines
+    hud.ghostLevel = ghost.level
+    hud.ghostFinished = ghost.gameOver
+    hud.ghostDiff = game.score - ghost.score
+  }
+
+  function isAdvancing(): boolean {
+    return !hud.menu && !hud.skillMenu && !game.paused && !game.gameOver
+  }
+
+  /** Todo el input de juego pasa por aquí. Parada, la acción no se graba: el fantasma sí la aplicaría. */
+  function act(action: ReplayAction): void {
+    if (!isAdvancing()) return
+    recording?.actions.push([steps, action])
+    applyAction(game, action)
+  }
+
+  function step(dir: RepeatDir): void {
+    if (dir === 'left') act('moveLeft')
+    else if (dir === 'right') act('moveRight')
+    else act('softDrop')
   }
 
   function frame(now: number): void {
-    if (!hud.menu && !hud.skillMenu) game.update(Math.min(now - lastTime, MAX_FRAME_MS))
+    const dt = Math.min(now - lastTime, MAX_FRAME_MS)
+    if (countdownMs > 0) {
+      countdownMs -= dt
+      if (countdownMs <= 0) {
+        countdownMs = 0
+        game.togglePause()
+      }
+    }
+    if (isAdvancing()) {
+      keyRepeat.update(dt, step)
+      accumulator += dt
+      while (accumulator >= STEP_MS && !game.gameOver) {
+        accumulator -= STEP_MS
+        ghostStep?.()
+        game.update(STEP_MS)
+        steps++
+      }
+    } else {
+      keyRepeat.clear() // pausa, menús y fin de partida olvidan las teclas mantenidas
+    }
     lastTime = now
     syncHud()
     listeners.forEach((fn) => fn(now))
@@ -190,7 +285,22 @@ export function useGame(): GameContext {
   function start(mode: GameMode): void {
     // Limpiar antes de reset(): reset() ya puede anunciar una primera pieza especial
     effects.clear()
-    game.reset(mode)
+    const seed = Math.floor(Math.random() * 2 ** 32)
+    recording = {
+      version: REPLAY_VERSION,
+      seed,
+      mode,
+      startLevel: game.startLevel,
+      score: 0,
+      actions: [],
+    }
+    accumulator = 0
+    steps = 0
+    game.reset(mode, seed)
+    run.reset()
+    // Sin «Jugar contra mi fantasma» es una partida de un jugador; la grabación sigue igual
+    const best = settings.values.versusGhost ? loadGhost(mode) : null
+    ghostStep = best && createReplayer(ghost, best)
     hud.menu = false
     hud.skillMenu = false
     syncHud()
@@ -207,12 +317,19 @@ export function useGame(): GameContext {
   }
 
   function togglePause(): void {
-    game.togglePause()
-    if (!game.paused) {
-      resumedAt = performance.now()
-      ignoreRepeat = true
-    }
+    if (countdownMs > 0) countdownMs = 0
+    else if (game.paused) countdownMs = RESUME_COUNTDOWN_MS
+    else game.togglePause()
     syncHud()
+  }
+
+  /** Perder el foco para la partida o cancela la cuenta atrás: no debe reanudarse sin el jugador. */
+  function autoPause(): void {
+    if (countdownMs > 0 || isAdvancing()) togglePause()
+  }
+
+  function onVisibilityChange(): void {
+    if (document.hidden) autoPause()
   }
 
   function setStartLevel(level: number): void {
@@ -233,12 +350,12 @@ export function useGame(): GameContext {
 
   function useSkill(id: SkillId): void {
     hud.skillMenu = false // el motor ignora input en menú/pausa, así que cerrar primero
-    game.useSkill(id)
+    act(`useSkill:${id}`)
     syncHud()
   }
 
   function onSkillKey(e: KeyboardEvent): void {
-    if (e.code === 'Escape' || e.code === 'KeyE') return closeSkillMenu()
+    if (e.code === 'Escape' || e.code === settings.values.keys.skills) return closeSkillMenu()
     const skill = SKILLS[Number(e.key) - 1]
     if (skill) useSkill(skill.id)
   }
@@ -251,50 +368,53 @@ export function useGame(): GameContext {
   }
 
   function onKeydown(e: KeyboardEvent): void {
-    if (isTypingTarget(e.target)) return // escribir el nombre del récord no es jugar
+    if (hotkeysBlocked(e.target)) return // escribir el nombre del récord no es jugar
     sfx.unlock() // el audio solo puede activarse tras un gesto del usuario
     if (e.code === 'KeyM') {
       sfx.toggleMute()
       return syncHud()
     }
     if (hud.menu) return onMenuKey(e)
-    if (hud.skillMenu) return onSkillKey(e)
+    if (hud.skillMenu) {
+      if (!e.repeat) onSkillKey(e)
+      return
+    }
     if (e.code === 'KeyP' || e.code === 'Escape') {
       if (!e.repeat) togglePause()
       return
     }
-    // Con el menú de pausa abierto (o recién cerrado) las teclas de juego no llegan al motor
-    if (game.paused || performance.now() - resumedAt < RESUME_GRACE_MS) return
-    if (e.repeat && ignoreRepeat) return
-    if (!e.repeat) ignoreRepeat = false
-    switch (e.code) {
-      case 'KeyC':
-        if (!e.repeat) game.holdPiece() // mantener C pulsada no debe guardar cada pieza nueva
+    // En pausa y durante la cuenta atrás las teclas de juego no llegan al motor
+    const action = actionForKey(settings.values.keys, e.code)
+    if (!action || game.paused || game.gameOver) return
+    e.preventDefault() // evita scroll y que la tecla active el botón con foco
+    if (e.repeat) return // la repetición es propia: el resultado no depende del teclado del sistema
+    switch (action) {
+      case 'left':
+      case 'right':
+      case 'down':
+        step(action)
+        keyRepeat.press(action)
         break
-      case 'KeyE':
+      case 'rotate':
+      case 'rotateAlt':
+        act('rotate')
+        break
+      case 'hardDrop':
+        act('hardDrop')
+        break
+      case 'hold':
+        act('holdPiece')
+        break
+      case 'skills':
         openSkillMenu()
         break
-      case 'ArrowLeft':
-        game.moveLeft()
-        break
-      case 'ArrowRight':
-        game.moveRight()
-        break
-      case 'ArrowDown':
-        game.softDrop()
-        break
-      case 'ArrowUp':
-      case 'KeyX':
-        game.rotate()
-        break
-      case 'Space':
-        e.preventDefault() // evita scroll y que Space active el botón con foco
-        game.hardDrop()
-        break
-      default:
-        return
     }
     syncHud()
+  }
+
+  function onKeyup(e: KeyboardEvent): void {
+    const action = actionForKey(settings.values.keys, e.code)
+    if (action === 'left' || action === 'right' || action === 'down') keyRepeat.release(action)
   }
 
   function onFrame(fn: FrameListener): () => void {
@@ -304,12 +424,18 @@ export function useGame(): GameContext {
 
   onMounted(() => {
     window.addEventListener('keydown', onKeydown)
+    window.addEventListener('keyup', onKeyup)
+    window.addEventListener('blur', autoPause)
+    document.addEventListener('visibilitychange', onVisibilityChange)
     lastTime = performance.now()
     animId = requestAnimationFrame(frame)
   })
 
   onUnmounted(() => {
     window.removeEventListener('keydown', onKeydown)
+    window.removeEventListener('keyup', onKeyup)
+    window.removeEventListener('blur', autoPause)
+    document.removeEventListener('visibilitychange', onVisibilityChange)
     cancelAnimationFrame(animId)
     listeners.clear()
   })
@@ -317,8 +443,11 @@ export function useGame(): GameContext {
   syncHud()
   return {
     game,
+    ghost,
     effects,
     hud,
+    settings,
+    runStats: run.stats,
     onFrame,
     start,
     restart,
