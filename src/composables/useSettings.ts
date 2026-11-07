@@ -21,6 +21,8 @@ export interface Settings {
   arr: number
   /** Tecla física (KeyboardEvent.code) de cada acción. */
   keys: KeyMap
+  /** Jugar contra el fantasma guardado del modo; se lee al empezar cada partida. */
+  versusGhost: boolean
 }
 
 export type TimingName = 'das' | 'arr'
@@ -45,6 +47,7 @@ export function defaultSettings(): Settings {
       hold: 'KeyC',
       skills: 'KeyE',
     },
+    versusGhost: true,
   }
 }
 
@@ -117,6 +120,8 @@ export function parseSettings(raw: string | null): Settings {
     das: validTiming('das', data?.das),
     arr: validTiming('arr', data?.arr),
     keys: validKeys(data?.keys) ? data.keys : defaultSettings().keys,
+    versusGhost:
+      typeof data?.versusGhost === 'boolean' ? data.versusGhost : defaultSettings().versusGhost,
   }
 }
 
@@ -134,6 +139,7 @@ export interface SettingsContext {
   setTiming: (name: TimingName, value: number) => void
   /** Asigna la tecla y guarda; si se rechaza no cambia nada y devuelve el motivo. */
   assignKey: (action: GameAction, code: string) => string | null
+  setVersusGhost: (on: boolean) => void
   restoreDefaults: () => void
 }
 
@@ -162,10 +168,15 @@ export function useSettings(): SettingsContext {
     return null
   }
 
+  function setVersusGhost(on: boolean): void {
+    values.versusGhost = on
+    persist()
+  }
+
   function restoreDefaults(): void {
     Object.assign(values, defaultSettings())
     persist()
   }
 
-  return { values, setTiming, assignKey, restoreDefaults }
+  return { values, setTiming, assignKey, setVersusGhost, restoreDefaults }
 }

@@ -482,6 +482,40 @@ describe('useGame: fantasma en partida', () => {
     expect(ctx.hud.hasGhost).toBe(false)
   })
 
+  it('sin grabación y con el ajuste activado sigue siendo de un jugador', () => {
+    mountGame()
+    ctx.settings.setVersusGhost(true)
+    ctx.start('marathon')
+    expect(ctx.hud.hasGhost).toBe(false)
+  })
+
+  it('con grabación pero el ajuste apagado es una partida de un jugador', () => {
+    mountGame()
+    ctx.start('marathon')
+    finishGame(100)
+    ctx.settings.setVersusGhost(false)
+    ctx.restart()
+    expect(ctx.hud.hasGhost).toBe(false)
+    advance(200)
+    expect(ctx.ghost.elapsedMs).toBe(0) // el rival ni siquiera avanza
+  })
+
+  it('cambiar el ajuste a mitad de partida no afecta hasta la siguiente', () => {
+    playAgainstGhost()
+    ctx.settings.setVersusGhost(false)
+    expect(ctx.hud.hasGhost).toBe(true)
+    ctx.restart()
+    expect(ctx.hud.hasGhost).toBe(false)
+  })
+
+  it('con el ajuste apagado una partida que supera el récord se guarda igual', () => {
+    mountGame()
+    ctx.settings.setVersusGhost(false)
+    ctx.start('marathon')
+    finishGame(100)
+    expect(loadGhost('marathon')).not.toBeNull()
+  })
+
   it('el fantasma avanza a la par que el jugador', () => {
     playAgainstGhost()
     expect(ctx.hud.hasGhost).toBe(true)

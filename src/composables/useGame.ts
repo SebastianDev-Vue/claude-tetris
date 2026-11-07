@@ -71,9 +71,11 @@ export interface Hud {
   time: string
   /** Nivel con el que empezará la próxima partida. */
   startLevel: number
-  /** Hay una mejor marca de este modo corriendo en el mini tablero. */
+  /** Partida contra el fantasma: hay grabación de este modo y el jugador lo eligió en Ajustes. */
   hasGhost: boolean
   ghostScore: number
+  ghostLines: number
+  ghostLevel: number
   /** El fantasma ya terminó: su tablero queda fijo y su puntuación es la final. */
   ghostFinished: boolean
   /** Puntos del jugador menos los del fantasma. */
@@ -182,6 +184,8 @@ export function useGame(): GameContext {
     startLevel: 1,
     hasGhost: false,
     ghostScore: 0,
+    ghostLines: 0,
+    ghostLevel: 1,
     ghostFinished: false,
     ghostDiff: 0,
   })
@@ -228,6 +232,8 @@ export function useGame(): GameContext {
     hud.startLevel = game.startLevel
     hud.hasGhost = ghostStep !== null
     hud.ghostScore = ghost.score
+    hud.ghostLines = ghost.lines
+    hud.ghostLevel = ghost.level
     hud.ghostFinished = ghost.gameOver
     hud.ghostDiff = game.score - ghost.score
   }
@@ -292,7 +298,8 @@ export function useGame(): GameContext {
     steps = 0
     game.reset(mode, seed)
     run.reset()
-    const best = loadGhost(mode)
+    // Sin «Jugar contra mi fantasma» es una partida de un jugador; la grabación sigue igual
+    const best = settings.values.versusGhost ? loadGhost(mode) : null
     ghostStep = best && createReplayer(ghost, best)
     hud.menu = false
     hud.skillMenu = false
