@@ -36,11 +36,11 @@ describe('useTheme: skins', () => {
     const { skin } = mountTheme()
     expect(skin.value).toBe('retro')
     const seen: string[] = []
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 6; i++) {
       pressR()
       seen.push(skin.value)
     }
-    expect(seen).toEqual(['neon', 'pastel', 'pixel', '8bit', 'retro'])
+    expect(seen).toEqual(['neon', 'pastel', 'pixel', '8bit', 'chalk', 'retro'])
     await nextTick()
     expect(document.documentElement.dataset.skin).toBe('retro')
   })
@@ -81,6 +81,11 @@ describe('useTheme: skins', () => {
     expect(localStorage.getItem(SKIN_STORAGE_KEY)).toBe('pixel')
     wrapper?.unmount()
     expect(mountTheme().skin.value).toBe('pixel')
+  })
+
+  it('acepta la skin pizarra guardada en localStorage', () => {
+    localStorage.setItem(SKIN_STORAGE_KEY, 'chalk')
+    expect(mountTheme().skin.value).toBe('chalk')
   })
 
   it('un valor guardado desconocido vuelve a retro', () => {

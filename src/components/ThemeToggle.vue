@@ -10,6 +10,7 @@ const SKIN_LABELS: Record<Skin, string> = {
   pastel: 'Pastel',
   pixel: 'Pixel art',
   '8bit': '8-bit',
+  chalk: 'Pizarra',
 }
 
 /** Quita el foco del selector: si lo conserva, las flechas del juego cambiarían la skin. */

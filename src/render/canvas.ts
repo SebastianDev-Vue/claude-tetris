@@ -25,9 +25,9 @@ export const RETRO_FONT = '"Press Start 2P", monospace'
  * Aspecto de los bloques. 'retro' = cuadrados de color plano (el clásico),
  * '8bit' = bloques en píxeles con la paleta del nivel, sin rejilla, fantasma ni halos.
  */
-export type Skin = 'retro' | 'neon' | 'pastel' | 'pixel' | '8bit'
+export type Skin = 'retro' | 'neon' | 'pastel' | 'pixel' | '8bit' | 'chalk'
 
-export const SKINS: readonly Skin[] = ['retro', 'neon', 'pastel', 'pixel', '8bit']
+export const SKINS: readonly Skin[] = ['retro', 'neon', 'pastel', 'pixel', '8bit', 'chalk']
 
 /** Cómo dibujar: el canvas no lee CSS, así que el tema llega aquí ya resuelto. */
 export interface RenderStyle {
@@ -176,6 +176,84 @@ function drawPixelBlock(ctx: Ctx, px: number, py: number, color: string, size: n
       )
 }
 
+/**
+ * Ruido determinista 0..1 de una celda (`i` elige el valor dentro de la celda).
+ * Hash entero, nunca Math.random: el bloque de tiza no debe parpadear entre frames.
+ */
+export function chalkNoise(row: number, col: number, type: number, i = 0): number {
+  let h =
+    Math.imul(row + 1, 73856093) ^
+    Math.imul(col + 1, 19349663) ^
+    Math.imul(type + 1, 83492791) ^
+    Math.imul(i + 1, 0x9e3779b1)
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b)
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b)
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296
+}
+
+/**
+ * Pizarra: trazos diagonales de tiza de color y un contorno irregular (jitter de 1–2 px).
+ * `ghost` = solo el contorno discontinuo, para la pieza fantasma.
+ */
+function drawChalkBlock(
+  ctx: Ctx,
+  x: number,
+  y: number,
+  colorIndex: number,
+  size: number,
+  ghost = false,
+): void {
+  const px = x * size
+  const py = y * size
+  const noise = (i: number) => chalkNoise(y, x, colorIndex, i)
+  // desplazamiento de 1 a 2 px con signo aleatorio
+  const jitter = (i: number) => (1 + noise(i)) * (noise(i + 100) < 0.5 ? -1 : 1)
+  const a = 3
+  const b = size - 3
+  const m = size / 2
+  const outline: [number, number][] = [
+    [a, a],
+    [m, a],
+    [b, a],
+    [b, m],
+    [b, b],
+    [m, b],
+    [a, b],
+    [a, m],
+  ]
+  ctx.save()
+  ctx.strokeStyle = lighten(COLORS[colorIndex] ?? '#ffffff', 0.35)
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  if (ghost) {
+    ctx.globalAlpha = 0.5
+    ctx.setLineDash([3, 3])
+  } else {
+    // relleno: líneas paralelas x + y = d, recortadas al bloque
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(px + a, py + a, b - a, b - a)
+    ctx.clip()
+    ctx.globalAlpha *= 0.6
+    ctx.lineWidth = 1.5
+    ctx.beginPath()
+    const step = Math.max(3, size / 7)
+    for (let k = 1, d = step; d < 2 * size; k++, d += step) {
+      const o = d + jitter(20 + k) / 2
+      ctx.moveTo(px + o - size, py + size)
+      ctx.lineTo(px + o, py)
+    }
+    ctx.stroke()
+    ctx.restore()
+  }
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  outline.forEach(([ox, oy], i) => ctx.lineTo(px + ox + jitter(2 * i), py + oy + jitter(2 * i + 1)))
+  ctx.closePath()
+  ctx.stroke()
+  ctx.restore()
+}
+
 /** Dibuja una celda. Compartido entre el tablero (BLOCK) y las vistas previas (su propio tamaño). */
 export function drawBlock(
   ctx: Ctx,
@@ -201,6 +279,7 @@ export function drawBlock(
   if (skin === 'neon') drawNeonBlock(ctx, px, py, color, size)
   else if (skin === 'pastel') drawPastelBlock(ctx, px, py, colorIndex, size)
   else if (skin === 'pixel') drawPixelBlock(ctx, px, py, color, size)
+  else if (skin === 'chalk') drawChalkBlock(ctx, x, y, colorIndex, size)
   else {
     ctx.fillStyle = color
     ctx.fillRect(px + 1, py + 1, size - 2, size - 2)
@@ -237,19 +316,15 @@ function drawGrid(ctx: Ctx, gridColor: string): void {
 
 /**
  * Ejecuta `draw` con un halo pulsante del color de la pieza si es especial
- * (pentominó, reto o recompensa); si no (o en retro), dibuja sin más.
+ * (pentominó, reto o recompensa); si no (o en 8-bit), dibuja sin más.
+ * En pizarra el halo es blanco, suave y fijo, como polvo de tiza.
  */
-function withSpecialGlow(
-  ctx: Ctx,
-  type: number,
-  now: number,
-  retro: boolean,
-  draw: () => void,
-): void {
-  if (retro || !specialKind(type)) return draw()
+function withSpecialGlow(ctx: Ctx, type: number, now: number, skin: Skin, draw: () => void): void {
+  if (skin === '8bit' || !specialKind(type)) return draw()
   ctx.save()
-  ctx.shadowColor = COLORS[type] ?? '#fff'
-  ctx.shadowBlur = (10 + 6 * Math.sin(now / 160)) * blurScale(ctx)
+  const chalk = skin === 'chalk'
+  ctx.shadowColor = chalk ? 'rgba(255,255,255,0.6)' : (COLORS[type] ?? '#fff')
+  ctx.shadowBlur = (chalk ? 8 : 10 + 6 * Math.sin(now / 160)) * blurScale(ctx)
   draw()
   ctx.restore()
 }
@@ -270,8 +345,14 @@ export function drawBoard(ctx: Ctx, game: Game, style: RenderStyle, now: number)
   if (!game.hideLocked)
     forEachCell(game.board, (r, c, value) => drawBlock(ctx, c, r, value, BLOCK, 1, skin, lv))
   const { current } = game
-  if (!retro) drawPiece(ctx, current, game.ghostY(), skin, lv, 0.2) // en 8-bit no hay fantasma
-  withSpecialGlow(ctx, current.type, now, retro, () => drawPiece(ctx, current, current.y, skin, lv))
+  const ghostY = game.ghostY()
+  // en 8-bit no hay fantasma; en pizarra es solo el contorno discontinuo
+  if (skin === 'chalk')
+    forEachCell(current.shape, (r, c, value) =>
+      drawChalkBlock(ctx, current.x + c, ghostY + r, value, BLOCK, true),
+    )
+  else if (!retro) drawPiece(ctx, current, ghostY, skin, lv, 0.2)
+  withSpecialGlow(ctx, current.type, now, skin, () => drawPiece(ctx, current, current.y, skin, lv))
 }
 
 /** Vista previa centrada en una rejilla de `cells`×`cells`. */
@@ -290,7 +371,7 @@ export function drawPreview(
   const { shape } = piece
   const offX = Math.floor((cells - (shape[0]?.length ?? 0)) / 2)
   const offY = Math.floor((cells - shape.length) / 2)
-  withSpecialGlow(ctx, piece.type, now, skin === '8bit', () =>
+  withSpecialGlow(ctx, piece.type, now, skin, () =>
     forEachCell(shape, (r, c, value) =>
       drawBlock(ctx, offX + c, offY + r, value, size, 1, skin, level),
     ),

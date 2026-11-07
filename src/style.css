@@ -673,3 +673,18 @@ kbd {
   --grid: #0c1420;
   --menu-bg: rgba(0, 0, 0, 0.92);
 }
+
+/* ---- Skin pizarra ---- */
+/* Pizarra verde oscura con rejilla de tiza casi invisible. */
+:root[data-skin='chalk'] {
+  --canvas-bg: #1f3a32;
+  --grid: rgba(255, 255, 255, 0.08);
+}
+
+/* Velo de borrado: restos de tiza mal borrada, algo más claros hacia el centro. */
+:root[data-skin='chalk'] #board {
+  background:
+    radial-gradient(ellipse at 40% 35%, rgba(255, 255, 255, 0.07), transparent 60%),
+    linear-gradient(170deg, rgba(255, 255, 255, 0.04), transparent 40%, rgba(255, 255, 255, 0.03)),
+    var(--canvas-bg);
+}
