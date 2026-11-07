@@ -38,3 +38,6 @@ __screenshots__/
 *.timestamp-*-*.mjs
 
 !.vscode/settings.json
+
+# worktrees creados por /worktree
+.worktrees/
