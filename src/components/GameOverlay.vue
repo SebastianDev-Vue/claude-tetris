@@ -5,6 +5,7 @@ import { SKILLS, type SkillId } from '../engine/skills'
 import { useGameContext } from '../composables/useGame'
 import { NAME_MAX_LENGTH, useRecords } from '../composables/useRecords'
 import { keyLabel } from '../composables/useSettings'
+import { loadGhost } from '../composables/useGhosts'
 import { linesPerMinute } from '../composables/useRunStats'
 import RecordsTable from './RecordsTable.vue'
 import ScoreCurve from './ScoreCurve.vue'
@@ -45,6 +46,11 @@ const screen = computed<Screen>(() => {
   if (hud.paused) return 'pause'
   return null
 })
+
+/** Marca de cada modo contra la que se jugaría; se relee cada vez que se abre el menú. */
+const ghostScores = computed(() =>
+  hud.menu && settings.values.versusGhost ? MODES.map((m) => loadGhost(m.id)?.score) : [],
+)
 
 /** Quita el foco del botón pulsado: si no, Space lo reactivaría al jugar. */
 function run(action: () => void, e: MouseEvent): void {
@@ -143,6 +149,9 @@ const vFocus = { mounted: (el: HTMLElement) => el.focus() }
                 <span class="mode-text">
                   <span class="mode-name">{{ mode.name }}</span>
                   <span class="mode-desc">{{ mode.description }}</span>
+                  <span v-if="ghostScores[i] !== undefined" class="mode-ghost">
+                    Fantasma: {{ ghostScores[i]!.toLocaleString() }} puntos
+                  </span>
                 </span>
               </button>
             </li>
@@ -635,6 +644,11 @@ const vFocus = { mounted: (el: HTMLElement) => el.focus() }
 .mode-desc {
   font-size: 12px;
   color: var(--muted);
+}
+
+.mode-ghost {
+  font-size: 11px;
+  color: var(--accent);
 }
 
 .overlay-title--energy {

@@ -84,6 +84,16 @@ onUnmounted(stopCapture)
       />
     </label>
 
+    <label class="settings-row settings-toggle">
+      Jugar contra mi fantasma
+      <input
+        type="checkbox"
+        :checked="values.versusGhost"
+        @change="settings.setVersusGhost(($event.target as HTMLInputElement).checked)"
+        @pointerup="($event.target as HTMLInputElement).blur()"
+      />
+    </label>
+
     <ul class="settings-keys">
       <li v-for="action in ACTIONS" :key="action.id" class="settings-row">
         {{ action.label }}
@@ -153,6 +163,13 @@ onUnmounted(stopCapture)
   font-size: 12px;
   color: var(--muted);
   text-align: left;
+}
+
+.settings-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
 }
 
 .settings-keys {

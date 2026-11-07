@@ -68,6 +68,20 @@ describe('parseSettings: datos inválidos', () => {
     expect(parseSettings(raw)).toEqual(defaults)
   })
 
+  it('versusGhost viene activado y se conserva si es booleano', () => {
+    expect(defaults.versusGhost).toBe(true)
+    expect(parseSettings(JSON.stringify({ versusGhost: false })).versusGhost).toBe(false)
+  })
+
+  it.each([['"no"'], ['0'], ['null']])('versusGhost %s vuelve al defecto', (raw) => {
+    expect(parseSettings(`{"versusGhost":${raw}}`).versusGhost).toBe(true)
+  })
+
+  it('setVersusGhost se guarda para la siguiente sesión', () => {
+    useSettings().setVersusGhost(false)
+    expect(useSettings().values.versusGhost).toBe(false)
+  })
+
   it('un tiempo no numérico se sustituye y el resto se conserva', () => {
     const s = parseSettings(JSON.stringify({ das: 'rápido', arr: 30 }))
     expect(s.das).toBe(defaults.das)
