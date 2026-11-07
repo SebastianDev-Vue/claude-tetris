@@ -5,7 +5,7 @@ import { SKILLS, type SkillId } from '../engine/skills'
 import { useGameContext } from '../composables/useGame'
 import { NAME_MAX_LENGTH, useRecords } from '../composables/useRecords'
 import { keyLabel } from '../composables/useSettings'
-import { loadGhost } from '../composables/useGhosts'
+import { loadAll } from '../composables/useGhosts'
 import { linesPerMinute } from '../composables/useRunStats'
 import RecordsTable from './RecordsTable.vue'
 import ScoreCurve from './ScoreCurve.vue'
@@ -48,9 +48,11 @@ const screen = computed<Screen>(() => {
 })
 
 /** Marca de cada modo contra la que se jugaría; se relee cada vez que se abre el menú. */
-const ghostScores = computed(() =>
-  hud.menu && settings.values.versusGhost ? MODES.map((m) => loadGhost(m.id)?.score) : [],
-)
+const ghostScores = computed(() => {
+  if (!hud.menu || !settings.values.versusGhost) return []
+  const ghosts = loadAll() // una sola lectura de localStorage para todos los modos
+  return MODES.map((m) => ghosts[m.id]?.score)
+})
 
 /** Quita el foco del botón pulsado: si no, Space lo reactivaría al jugar. */
 function run(action: () => void, e: MouseEvent): void {

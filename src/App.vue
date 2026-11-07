@@ -40,7 +40,7 @@ provide(ThemeKey, useTheme())
 
 <style scoped>
 /* Si los dos tableros no caben en una fila, el rival baja entero debajo del jugador */
-.game-container {
+.game-container:has(.rival-side) {
   flex-wrap: wrap;
   justify-content: center;
 }

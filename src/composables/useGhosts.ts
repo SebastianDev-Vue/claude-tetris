@@ -44,7 +44,7 @@ function isReplay(data: unknown, mode: GameMode): data is Replay {
 }
 
 /** Lee las grabaciones válidas; lo corrupto o de otra versión se descarta sin afectar al resto. */
-function loadAll(): Partial<Record<GameMode, Replay>> {
+export function loadAll(): Partial<Record<GameMode, Replay>> {
   const ghosts: Partial<Record<GameMode, Replay>> = {}
   try {
     const data: unknown = JSON.parse(localStorage.getItem(GHOSTS_KEY) ?? '{}')

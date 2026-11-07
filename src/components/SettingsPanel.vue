@@ -40,6 +40,13 @@ function onCaptureKey(e: KeyboardEvent): void {
   if (!reason || e.code === 'Escape') stopCapture()
 }
 
+/** Guarda el ajuste y suelta el foco: con él puesto, las teclas del juego se ignoran. */
+function onVersusChange(e: Event): void {
+  const box = e.target as HTMLInputElement
+  settings.setVersusGhost(box.checked)
+  box.blur()
+}
+
 function toggleCapture(action: GameAction, e: MouseEvent): void {
   ;(e.currentTarget as HTMLButtonElement).blur() // Space no debe volver a pulsar el botón
   message.value = ''
@@ -86,12 +93,7 @@ onUnmounted(stopCapture)
 
     <label class="settings-row settings-toggle">
       Jugar contra mi fantasma
-      <input
-        type="checkbox"
-        :checked="values.versusGhost"
-        @change="settings.setVersusGhost(($event.target as HTMLInputElement).checked)"
-        @pointerup="($event.target as HTMLInputElement).blur()"
-      />
+      <input type="checkbox" :checked="values.versusGhost" @change="onVersusChange" />
     </label>
 
     <ul class="settings-keys">

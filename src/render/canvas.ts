@@ -129,16 +129,13 @@ function drawRetroBlock(
   }
 }
 
-/** shadowBlur ignora la transformación del canvas: en el mini tablero hay que reducirlo a mano. */
-const blurScale = (ctx: Ctx): number => ctx.getTransform().a
-
 /** Neón: interior oscuro translúcido y borde brillante con halo (shadowBlur) del color de la pieza. */
 function drawNeonBlock(ctx: Ctx, px: number, py: number, color: string, size: number): void {
   ctx.save()
   ctx.fillStyle = color + '33'
   ctx.fillRect(px + 2, py + 2, size - 4, size - 4)
   ctx.shadowColor = color
-  ctx.shadowBlur = (size / 2) * blurScale(ctx)
+  ctx.shadowBlur = size / 2
   ctx.strokeStyle = color
   ctx.lineWidth = 2
   ctx.strokeRect(px + 3, py + 3, size - 6, size - 6)
@@ -191,6 +188,9 @@ export function chalkNoise(row: number, col: number, type: number, i = 0): numbe
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296
 }
 
+/** Tiza de cada pieza, calculada una vez: drawChalkBlock corre por celda y frame. */
+const CHALK_COLORS = COLORS.map((c) => c && lighten(c, 0.35))
+
 /**
  * Pizarra: trazos diagonales de tiza de color y un contorno irregular (jitter de 1–2 px).
  * `ghost` = solo el contorno discontinuo, para la pieza fantasma.
@@ -222,7 +222,7 @@ function drawChalkBlock(
     [a, m],
   ]
   ctx.save()
-  ctx.strokeStyle = lighten(COLORS[colorIndex] ?? '#ffffff', 0.35)
+  ctx.strokeStyle = CHALK_COLORS[colorIndex] ?? '#ffffff'
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
   if (ghost) {
@@ -279,7 +279,7 @@ export function drawBlock(
   if (skin === 'neon') drawNeonBlock(ctx, px, py, color, size)
   else if (skin === 'pastel') drawPastelBlock(ctx, px, py, colorIndex, size)
   else if (skin === 'pixel') drawPixelBlock(ctx, px, py, color, size)
-  else if (skin === 'chalk') drawChalkBlock(ctx, x, y, colorIndex, size)
+  else if (skin === 'chalk') drawChalkBlock(ctx, x, y, colorIndex, size, alpha < 1) // alpha < 1: pieza fantasma
   else {
     ctx.fillStyle = color
     ctx.fillRect(px + 1, py + 1, size - 2, size - 2)
@@ -290,7 +290,7 @@ export function drawBlock(
   // icono de power-up / comodín
   const icon = CELL_ICONS[colorIndex]
   if (icon) {
-    ctx.fillStyle = colorIndex === WILDCARD ? '#f9a825' : '#1a1a25'
+    ctx.fillStyle = colorIndex === WILDCARD ? '#f9a825' : skin === 'chalk' ? '#f5f5f0' : '#1a1a25'
     ctx.font = `${Math.floor(size * 0.6)}px system-ui, sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
@@ -324,7 +324,7 @@ function withSpecialGlow(ctx: Ctx, type: number, now: number, skin: Skin, draw: 
   ctx.save()
   const chalk = skin === 'chalk'
   ctx.shadowColor = chalk ? 'rgba(255,255,255,0.6)' : (COLORS[type] ?? '#fff')
-  ctx.shadowBlur = (chalk ? 8 : 10 + 6 * Math.sin(now / 160)) * blurScale(ctx)
+  ctx.shadowBlur = chalk ? 8 : 10 + 6 * Math.sin(now / 160)
   draw()
   ctx.restore()
 }
@@ -345,13 +345,7 @@ export function drawBoard(ctx: Ctx, game: Game, style: RenderStyle, now: number)
   if (!game.hideLocked)
     forEachCell(game.board, (r, c, value) => drawBlock(ctx, c, r, value, BLOCK, 1, skin, lv))
   const { current } = game
-  const ghostY = game.ghostY()
-  // en 8-bit no hay fantasma; en pizarra es solo el contorno discontinuo
-  if (skin === 'chalk')
-    forEachCell(current.shape, (r, c, value) =>
-      drawChalkBlock(ctx, current.x + c, ghostY + r, value, BLOCK, true),
-    )
-  else if (!retro) drawPiece(ctx, current, ghostY, skin, lv, 0.2)
+  if (!retro) drawPiece(ctx, current, game.ghostY(), skin, lv, 0.2) // en 8-bit no hay fantasma
   withSpecialGlow(ctx, current.type, now, skin, () => drawPiece(ctx, current, current.y, skin, lv))
 }
 

@@ -26,7 +26,7 @@ onUnmounted(() => off?.())
 
 <template>
   <!-- Franja VS: color, y también signo y flecha, para no depender solo del color -->
-  <div class="versus" :class="`versus--${diff.trend}`" role="status">
+  <div class="versus" :class="`versus--${diff.trend}`">
     <span class="versus-mark" aria-hidden="true">VS</span>
     <span class="versus-value">{{ diff.text }}</span>
     <span class="versus-note">{{ diff.note }}</span>

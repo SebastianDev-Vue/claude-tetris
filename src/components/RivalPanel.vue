@@ -9,7 +9,7 @@ const { ghost, hud } = useGameContext()
   <aside class="panel panel--rival" aria-label="Tu récord">
     <div class="panel-section">
       <span class="label">NEXT</span>
-      <PiecePreview :piece="() => ghost.next" />
+      <PiecePreview :piece="() => ghost.next" :level="hud.ghostLevel" />
     </div>
     <div class="panel-section">
       <span class="label">SCORE</span>
